@@ -17,16 +17,15 @@ const config = nali('config')
 // => {conn_str: 'http://foo.bar'}
 
 // we can register services
-// type Service: {init: (...) => Instance}
-// Services are modules with an `init` function
-// which has optional dependency names as parameters
-// and which returns an initialized instance of itself
+// type Service: (...) => Instance
+// Services are functions with
+// optional dependency names as parameters
+// and which return an initialized instance of itself
 // the return value can be a Promise or a Value
 nali.registerService('db', {
-  init: function (config) {
+  function (config) {
     return Doodaboos.connect(config.conn_str)
-  }
-})
+  })
 
 // we can resolve an instance of our `db` service:
 
@@ -55,7 +54,9 @@ Asynchronously resolve an instance of a service, lazily instantiating any depend
 
 ## Service Dependencies
 
-DI works similar to Angular. Service `init` functions state the names of their dependencies as parameter names, which are parsed out when the Service is registered.
+DI works similar to Angular. Service init functions state the names of their dependencies as parameter names, which are parsed out when the Service is registered. They are not called with `new` or with any particular `this` context.
+
+Return a Promises/A+ promise if you need to asynchronously instantiate a service
 
 ## not implemented
 

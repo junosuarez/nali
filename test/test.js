@@ -15,15 +15,10 @@ describe('registry', function () {
   it('can register services', function () {
     registry.testReset()
 
-    var apes = {
-      init: function (){}
-    }
-    var mammals = {
-      init: function (){}
-    }
-    var earth = {
-      init: function (){}
-    }
+    var apes = function (){}
+    var mammals = function (){}
+    var earth = function (){}
+
     registry.registerService('apes', apes)
     registry.registerService('mammals', mammals)
     registry.registerService('earth', earth)
@@ -42,26 +37,20 @@ describe('registry', function () {
     registry.testReset()
 
     var inited = []
-    var apes = {
-      init: function (mammals) {
-        mammals.should.equal('mammalInstance')
-        inited.push('apes')
-        return 'apeInstance'
-      }
+    var apes = function (mammals) {
+      mammals.should.equal('mammalInstance')
+      inited.push('apes')
+      return 'apeInstance'
     }
-    var mammals = {
-      init: function (earth) {
-        earth.should.equal('earthInstance')
-        inited.push('mammals')
-        return 'mammalInstance'
-      }
+    var mammals = function (earth) {
+      earth.should.equal('earthInstance')
+      inited.push('mammals')
+      return 'mammalInstance'
     }
-    var earth = {
-      init: function (universe) {
-        universe.should.equal('universal')
-        inited.push('earth')
-        return 'earthInstance'
-      }
+    var earth = function (universe) {
+      universe.should.equal('universal')
+      inited.push('earth')
+      return 'earthInstance'
     }
     registry.registerInstance('universe', 'universal')
     registry.registerService('apes', apes)
@@ -84,26 +73,20 @@ describe('registry', function () {
     registry.testReset()
 
     var inited = []
-    var apes = {
-      init: function (mammals) {
-        mammals.should.equal('mammalInstance')
-        inited.push('apes')
-        return 'apeInstance'
-      }
+    var apes = function (mammals) {
+      mammals.should.equal('mammalInstance')
+      inited.push('apes')
+      return 'apeInstance'
     }
-    var mammals = {
-      init: function (earth) {
-        earth.should.equal('earthInstance')
-        inited.push('mammals')
-        return 'mammalInstance'
-      }
+    var mammals = function (earth) {
+      earth.should.equal('earthInstance')
+      inited.push('mammals')
+      return 'mammalInstance'
     }
-    var earth = {
-      init: function (universe) {
-        universe.should.equal('universal')
-        inited.push('earth')
-        return 'earthInstance'
-      }
+    var earth = function (universe) {
+      universe.should.equal('universal')
+      inited.push('earth')
+      return 'earthInstance'
     }
     registry.registerInstance('universe', 'universal')
     registry.registerService('apes', apes)
@@ -129,20 +112,14 @@ describe('registry', function () {
   it ('lazy instantiated instances stick around', function (done) {
     registry.testReset()
 
-    var apes = {
-      init: function (mammals) {
-        return 'apeInstance'
-      }
+    var apes = function (mammals) {
+      return 'apeInstance'
     }
-    var mammals = {
-      init: function (earth) {
-        return 'mammalInstance'
-      }
+    var mammals = function (earth) {
+      return 'mammalInstance'
     }
-    var earth = {
-      init: function (universe) {
-        return 'earthInstance'
-      }
+    var earth = function (universe) {
+      return 'earthInstance'
     }
     registry.registerInstance('universe', 'universal')
     registry.registerService('apes', apes)

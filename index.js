@@ -59,9 +59,9 @@ module.exports.registerService = function (name, service) {
     throw new TypeError('service required')
   }
 
-  const initable = typeof service.init === 'function'
+  const initable = typeof service === 'function'
   if (!initable) {
-    throw new TypeError('service must have an init function')
+    throw new TypeError('service must be an init function')
   }
 
   if (name in services) {
@@ -69,8 +69,8 @@ module.exports.registerService = function (name, service) {
   }
 
   services[name] = {
-    init: service.init,
-    params: fninfo(service.init)
+    init: service,
+    params: fninfo(service)
   }
 
   events.emit('newService', name)
