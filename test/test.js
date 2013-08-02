@@ -188,4 +188,41 @@ describe('registry', function () {
 
   })
 
+
+  it('won\'t will try instantiate a service if requested after an error', function (done) {
+    registry.testReset()
+
+    var instantiations = 0
+    var attempts = 0
+
+    var service = function () {
+      attempts++
+      if (attempts == 2) {
+        return Q.resolve('succeed second')
+      }
+      return Q.reject(new Error('fail first'))
+    }
+    registry.registerService('service', service)
+    registry.on('newInstance', function () {
+      instantiations++
+    })
+
+    registry.resolve('service').then(function () {
+      throw new Error('Should not be resolved')
+    }, function (err) {
+      // first instatiation failed
+      err.message.should.equal('fail first')
+    })
+    .then(function () {
+      return registry.resolve('service')
+    })
+    .then(function () {
+      attempts.should.equal(2)
+      instantiations.should.equal(1)
+    })
+    .then(done, done)
+
+  })
+
+
 })

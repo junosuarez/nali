@@ -48,7 +48,10 @@ module.exports.resolve = function (name) {
           .then(function (instance) {
             service.instantiating = false
             registry.registerInstance(name, instance)
-          }, reject)
+          }, function (err) {
+            service.instantiating = false
+            reject(err)
+          })
       }
 
       events.once('newService:' + name, tryGetInstance)
