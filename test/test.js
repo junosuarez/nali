@@ -33,6 +33,20 @@ describe('registry', function () {
 
   })
 
+  it('can resolve multiple services', function (done) {
+    registry.testReset()
+    const K = function (x) { return function () { return x }}
+    registry.registerService('a', K(1))
+    registry.registerService('b', K(2))
+    registry.registerService('c', K(3))
+
+    registry(function (a, b, c) {
+      (a + b + c).should.equal(6)
+    })
+    .then(done, done)
+
+  })
+
   it ('resolves dependencies', function (done) {
     registry.testReset()
 
@@ -137,6 +151,5 @@ describe('registry', function () {
     .then(done, done)
 
   })
-
 
 })

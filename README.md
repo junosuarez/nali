@@ -44,6 +44,14 @@ nali will fetch or lazily instantiate arbitrary trees of service dependencies.
 
 Synchronously fetch a service instance
 
+Can also be used to asynchronously resolve multiple dependencies, for example:
+
+```js
+nali(function (db, log, sessions, webService) {
+  // now we have all the things
+})
+```
+
 ### `nali.resolve(name: String) => Promise<service: Any>`
 Asynchronously resolve an instance of a service, lazily instantiating any dependencies if necessary
 

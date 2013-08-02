@@ -6,6 +6,10 @@ const services = {}
 const instances = {}
 
 const registry = module.exports = function locate(name) {
+  if (typeof name === 'function') {
+    return module.exports.resolveAll(name)
+  }
+
   if (!(name in instances)) {
     throw new Error('No instance of ' + name)
   }
@@ -47,6 +51,13 @@ module.exports.resolve = function (name) {
 
   })
 
+}
+
+module.exports.resolveAll = function (fn) {
+  return Q.all(fninfo(fn).map(registry.resolve))
+    .then(function (args) {
+      return fn.apply(null, args)
+    })
 }
 
 const events = new EventEmitter
