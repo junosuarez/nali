@@ -1,5 +1,6 @@
 const chai = require('chai')
 chai.should()
+const Q = require('q')
 
 describe('registry', function () {
 
@@ -149,6 +150,41 @@ describe('registry', function () {
       registry('universe').should.equal('universal')
     })
     .then(done, done)
+
+  })
+
+  it('won\'t instantiate a service if it is currently being instantiated', function (done) {
+    registry.testReset()
+
+    var dfd = Q.defer()
+
+    var instantiations = 0
+
+    var service = function () { return dfd.promise }
+    registry.registerService('service', service)
+    registry.on('newInstance', function () {
+      instantiations++
+    })
+
+    var services = []
+
+    // do some shenanigans, one of which
+    // should result in `service` being
+    // instantiated
+    services.push(registry.resolve('service'))
+    services.push(registry.resolve('service'))
+    services.push(registry.resolve('service'))
+    process.nextTick(function () {
+      services.push(registry.resolve('service'))
+      dfd.resolve()
+
+      // finally
+      Q.all(services).then(function () {
+        instantiations.should.equal(1)
+      })
+      .then(done, done)
+
+    })
 
   })
 

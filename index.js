@@ -35,12 +35,18 @@ module.exports.resolve = function (name) {
     function tryInstantiate(name) {
       if (name in services) {
         const service = services[name]
-
+        if (service.instantiating) {
+          // because we're all singletons now :)
+          // keep from making a new instance
+          return
+        }
+        service.instantiating = true
         return Q.all(service.params.map(registry.resolve))
           .then(function (args) {
             return service.init.apply(null, args)
           })
           .then(function (instance) {
+            service.instantiating = false
             registry.registerInstance(name, instance)
           }, reject)
       }
@@ -72,7 +78,7 @@ module.exports.registerService = function (name, service) {
 
   const initable = typeof service === 'function'
   if (!initable) {
-    throw new TypeError('service must be an init function')
+    throw new TypeError('Service ' + name + ' must be an init function')
   }
 
   if (name in services) {
@@ -102,4 +108,14 @@ module.exports.testReset = function () {
   for (var i in instances) {
     delete instances[i]
   }
+}
+
+// unsupported
+// () => Dictionary<serviceName: String, dependencies: Array<String>>
+module.exports.graph = function () {
+  return Object.keys(services).reduce(function (g, name) {
+    const service = services[name]
+    g[name] = service.params.slice()
+    return g
+  },{})
 }
