@@ -1,7 +1,8 @@
 {
   "name": "nali",
-  "author": "jden <jason@denizac.org>",
-  "version": "0.1.0",
+  "author": "AgileMD <hello@agilemd.com>",
+  "contributors": ["jden <jason@denizac.org>"],
+  "version": "0.2.0",
   "description": "a DI service registry",
   "keywords": [
     "dependency injection"
