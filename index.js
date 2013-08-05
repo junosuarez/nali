@@ -63,7 +63,7 @@ module.exports.resolve = function (name) {
 }
 
 module.exports.resolveAll = function (fn) {
-  return Q.all(fninfo(fn).map(registry.resolve))
+  return Q.all(fninfo(fn).params.map(registry.resolve))
     .then(function (args) {
       return fn.apply(null, args)
     })
@@ -90,7 +90,7 @@ module.exports.registerService = function (name, service) {
 
   services[name] = {
     init: service,
-    params: fninfo(service)
+    params: fninfo(service).params
   }
 
   events.emit('newService', name)

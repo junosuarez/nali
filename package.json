@@ -1,7 +1,9 @@
 {
   "name": "nali",
   "author": "AgileMD <hello@agilemd.com>",
-  "contributors": ["jden <jason@denizac.org>"],
+  "contributors": [
+    "jden <jason@denizac.org>"
+  ],
   "version": "0.3.2",
   "description": "a DI service registry",
   "keywords": [
@@ -19,7 +21,7 @@
     "mocha": "~1.9.0"
   },
   "dependencies": {
-    "fninfo": "~1.0.2",
+    "fninfo": "~2.1.0",
     "q": "~0.9.6"
   }
 }
