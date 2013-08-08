@@ -70,6 +70,7 @@ module.exports.resolveAll = function (fn) {
 }
 
 const events = new EventEmitter
+events.setMaxListeners(1000)
 
 module.exports.on = events.on.bind(events)
 
