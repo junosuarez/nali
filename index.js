@@ -1,11 +1,35 @@
 const EventEmitter = require('events').EventEmitter
 const fninfo = require('fninfo')
 const Q = require('q')
+const util = require('util')
 
-const services = {}
-const instances = {}
 
-const registry = module.exports = function locate(name) {
+const Nali = module.exports = function(name) {
+  if (!(this instanceof Nali)) { return new Nali(name)}
+  this.services = {}
+  this.instances = {}
+  EventEmitter.call(this)
+}
+util.inherits(Nali, EventEmitter)
+
+Nali.prototype.dispose = function () {
+  const self = this
+  Object.keys(this.instances).forEach(function (name) {
+    const instance = self.instances[name]
+    // recursively dispose
+    // todo: replace with interface check
+    if (typeof instance.dispose === 'function') {
+      instance.dispose.call(instance)
+    }
+  })
+
+  // todo: dispose child containers
+  this.instances = null
+  this.services = null
+  this.removeAllListeners()
+}
+
+Nali.prototype.locate = function locate(name) {
   if (typeof name === 'function') {
     return module.exports.resolveAll(name)
   }
@@ -16,7 +40,7 @@ const registry = module.exports = function locate(name) {
   return instances[name]
 }
 
-module.exports.fetch = registry
+module.exports.fetch = Nali
 
 // (name: String) => Promise
 module.exports.resolve = function (name) {
@@ -26,7 +50,7 @@ module.exports.resolve = function (name) {
 
     function tryGetInstance() {
       if (name in instances) {
-        return resolve(registry(name))
+        return resolve(Nali(name))
       }
       events.once('newInstance:'+name, tryGetInstance)
       tryInstantiate(name)
@@ -41,13 +65,13 @@ module.exports.resolve = function (name) {
           return
         }
         service.instantiating = true
-        return Q.all(service.params.map(registry.resolve))
+        return Q.all(service.params.map(Nali.resolve))
           .then(function (args) {
             return service.init.apply(null, args)
           })
           .then(function (instance) {
             service.instantiating = false
-            registry.registerInstance(name, instance)
+            Nali.registerInstance(name, instance)
           }, function (err) {
             service.instantiating = false
             reject(err)
@@ -63,7 +87,7 @@ module.exports.resolve = function (name) {
 }
 
 module.exports.resolveAll = function (fn) {
-  return Q.all(fninfo(fn).params.map(registry.resolve))
+  return Q.all(fninfo(fn).params.map(Nali.resolve))
     .then(function (args) {
       return fn.apply(null, args)
     })
@@ -74,7 +98,7 @@ events.setMaxListeners(1000)
 
 module.exports.on = events.on.bind(events)
 
-module.exports.registerService = function (name, service) {
+Nali.prototype.registerService = function (name, service) {
 
   if (!service) {
     throw new TypeError('service required')
@@ -85,24 +109,24 @@ module.exports.registerService = function (name, service) {
     throw new TypeError('Service ' + name + ' must be an init function')
   }
 
-  if (name in services) {
+  if (name in this.services) {
     console.log('overwriting service ' + name + ' at', (new Error).stack)
   }
 
-  services[name] = {
+  this.services[name] = {
     init: service,
     params: fninfo(service).params
   }
 
-  events.emit('newService', name)
-  events.emit('newService:' + name)
+  this.emit('newService', name)
+  this.emit('newService:' + name)
 
 }
 
-module.exports.registerInstance = function (name, instance) {
-  instances[name] = instance
-  events.emit('newInstance', name)
-  events.emit('newInstance:' + name)
+Nali.prototype.registerInstance = function (name, instance) {
+  this.instances[name] = instance
+  this.emit('newInstance', name)
+  this.emit('newInstance:' + name)
 }
 
 module.exports.testReset = function () {

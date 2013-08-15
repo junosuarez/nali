@@ -1,47 +1,50 @@
 const chai = require('chai')
 chai.should()
 const Q = require('q')
+const sinon = require('sinon')
+chai.use(require('sinon-chai'))
+const expect = chai.expect
 
-describe('registry', function () {
+describe('Nali', function () {
 
-  const registry = require('../')
+  const Nali = require('../')
 
   it('can register instances', function () {
-    registry.testReset()
+    Nali.testReset()
     var foo = {}
-    registry.registerInstance('foo', foo)
+    Nali.registerInstance('foo', foo)
 
   })
 
   it('can register services', function () {
-    registry.testReset()
+    Nali.testReset()
 
     var apes = function (){}
     var mammals = function (){}
     var earth = function (){}
 
-    registry.registerService('apes', apes)
-    registry.registerService('mammals', mammals)
-    registry.registerService('earth', earth)
+    Nali.registerService('apes', apes)
+    Nali.registerService('mammals', mammals)
+    Nali.registerService('earth', earth)
   })
 
   it('can locate instances of static services', function () {
-    registry.testReset()
+    Nali.testReset()
 
     var bar = {}
-    registry.registerInstance('bar',bar)
-    registry('bar').should.equal(bar)
+    Nali.registerInstance('bar',bar)
+    Nali('bar').should.equal(bar)
 
   })
 
   it('can resolve multiple services', function (done) {
-    registry.testReset()
+    Nali.testReset()
     const K = function (x) { return function () { return x }}
-    registry.registerService('a', K(1))
-    registry.registerService('b', K(2))
-    registry.registerService('c', K(3))
+    Nali.registerService('a', K(1))
+    Nali.registerService('b', K(2))
+    Nali.registerService('c', K(3))
 
-    registry(function (a, b, c) {
+    Nali(function (a, b, c) {
       (a + b + c).should.equal(6)
     })
     .then(done, done)
@@ -49,7 +52,7 @@ describe('registry', function () {
   })
 
   it ('resolves dependencies', function (done) {
-    registry.testReset()
+    Nali.testReset()
 
     var inited = []
     var apes = function (mammals) {
@@ -67,12 +70,12 @@ describe('registry', function () {
       inited.push('earth')
       return 'earthInstance'
     }
-    registry.registerInstance('universe', 'universal')
-    registry.registerService('apes', apes)
-    registry.registerService('mammals', mammals)
-    registry.registerService('earth', earth)
+    Nali.registerInstance('universe', 'universal')
+    Nali.registerService('apes', apes)
+    Nali.registerService('mammals', mammals)
+    Nali.registerService('earth', earth)
 
-    registry.resolve('apes')
+    Nali.resolve('apes')
     .then(function (val){
       val.should.equal('apeInstance')
       inited.should.deep.equal([
@@ -85,7 +88,7 @@ describe('registry', function () {
   })
 
   it ('resolves dependencies for services not yet registered', function (done) {
-    registry.testReset()
+    Nali.testReset()
 
     var inited = []
     var apes = function (mammals) {
@@ -103,11 +106,11 @@ describe('registry', function () {
       inited.push('earth')
       return 'earthInstance'
     }
-    registry.registerInstance('universe', 'universal')
-    registry.registerService('apes', apes)
-    registry.registerService('mammals', mammals)
+    Nali.registerInstance('universe', 'universal')
+    Nali.registerService('apes', apes)
+    Nali.registerService('mammals', mammals)
 
-    registry.resolve('apes')
+    Nali.resolve('apes')
     .then(function (val){
       val.should.equal('apeInstance')
       inited.should.deep.equal([
@@ -119,13 +122,13 @@ describe('registry', function () {
     .then(done, done)
 
     process.nextTick(function () {
-      registry.registerService('earth', earth)
+      Nali.registerService('earth', earth)
     })
 
   })
 
   it ('lazy instantiated instances stick around', function (done) {
-    registry.testReset()
+    Nali.testReset()
 
     var apes = function (mammals) {
       return 'apeInstance'
@@ -136,33 +139,33 @@ describe('registry', function () {
     var earth = function (universe) {
       return 'earthInstance'
     }
-    registry.registerInstance('universe', 'universal')
-    registry.registerService('apes', apes)
-    registry.registerService('mammals', mammals)
-    registry.registerService('earth', earth)
+    Nali.registerInstance('universe', 'universal')
+    Nali.registerService('apes', apes)
+    Nali.registerService('mammals', mammals)
+    Nali.registerService('earth', earth)
 
-    registry.resolve('apes')
+    Nali.resolve('apes')
     .then(function (val){
 
-      registry('apes').should.equal('apeInstance')
-      registry('mammals').should.equal('mammalInstance')
-      registry('earth').should.equal('earthInstance')
-      registry('universe').should.equal('universal')
+      Nali('apes').should.equal('apeInstance')
+      Nali('mammals').should.equal('mammalInstance')
+      Nali('earth').should.equal('earthInstance')
+      Nali('universe').should.equal('universal')
     })
     .then(done, done)
 
   })
 
   it('won\'t instantiate a service if it is currently being instantiated', function (done) {
-    registry.testReset()
+    Nali.testReset()
 
     var dfd = Q.defer()
 
     var instantiations = 0
 
     var service = function () { return dfd.promise }
-    registry.registerService('service', service)
-    registry.on('newInstance', function () {
+    Nali.registerService('service', service)
+    Nali.on('newInstance', function () {
       instantiations++
     })
 
@@ -171,11 +174,11 @@ describe('registry', function () {
     // do some shenanigans, one of which
     // should result in `service` being
     // instantiated
-    services.push(registry.resolve('service'))
-    services.push(registry.resolve('service'))
-    services.push(registry.resolve('service'))
+    services.push(Nali.resolve('service'))
+    services.push(Nali.resolve('service'))
+    services.push(Nali.resolve('service'))
     process.nextTick(function () {
-      services.push(registry.resolve('service'))
+      services.push(Nali.resolve('service'))
       dfd.resolve()
 
       // finally
@@ -190,7 +193,7 @@ describe('registry', function () {
 
 
   it('won\'t will try instantiate a service if requested after an error', function (done) {
-    registry.testReset()
+    Nali.testReset()
 
     var instantiations = 0
     var attempts = 0
@@ -202,19 +205,19 @@ describe('registry', function () {
       }
       return Q.reject(new Error('fail first'))
     }
-    registry.registerService('service', service)
-    registry.on('newInstance', function () {
+    Nali.registerService('service', service)
+    Nali.on('newInstance', function () {
       instantiations++
     })
 
-    registry.resolve('service').then(function () {
+    Nali.resolve('service').then(function () {
       throw new Error('Should not be resolved')
     }, function (err) {
       // first instatiation failed
       err.message.should.equal('fail first')
     })
     .then(function () {
-      return registry.resolve('service')
+      return Nali.resolve('service')
     })
     .then(function () {
       attempts.should.equal(2)
@@ -224,5 +227,55 @@ describe('registry', function () {
 
   })
 
+  it('constructs a container', function () {
+    var container = new Nali()
+    container.should.be.instanceof(Nali)
+  })
+
+  it('doesnt require new keyword', function () {
+    var container = Nali()
+    container.should.be.instanceof(Nali)
+  })
+
+  describe('.dispose', function () {
+    it('is IDisposable', function () {
+      var container = new Nali()
+      container.dispose.should.be.a('function')
+    })
+    it('calls dispose on any managed instances which are IDisposable', function () {
+      var container = new Nali()
+      var foo = {
+        dispose: sinon.spy()
+      }
+      var foo2 = {
+        dispose: sinon.spy()
+      }
+      container.registerInstance('foo', foo)
+      container.registerInstance('foo2', foo2)
+      container.dispose()
+      foo.dispose.should.have.been.called
+      foo2.dispose.should.have.been.called
+      foo.dispose.firstCall.thisValue.should.equal(foo)
+    })
+    it('disposes instances', function () {
+      var container = new Nali()
+      container.registerInstance('foo', {})
+      container.dispose()
+      expect(container.instances).to.equal(null)
+    })
+    it('drops service references', function () {
+      var container = new Nali()
+      container.registerService('qux', function () {})
+      container.dispose()
+      expect(container.services).to.equal(null)
+    })
+    it('removes listeners', function () {
+      var container = new Nali()
+      container.removeAllListeners = sinon.spy()
+      container.dispose()
+      container.removeAllListeners.should.have.been.called
+    })
+  })
+  
 
 })
