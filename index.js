@@ -33,6 +33,10 @@ Nali.prototype.dispose = function () {
   this.removeAllListeners()
 }
 
+Nali.prototype.freeze = function () {
+  this.frozen = true
+}
+
 // (name: String) => Promise
 Nali.prototype.resolve = function (name) {
   if (typeof name === 'function') {
@@ -71,7 +75,7 @@ Nali.prototype.resolve = function (name) {
           })
           .then(function (instance) {
             service.instantiating = false
-            self.registerInstance(name, instance)
+            self._instantiated(name, instance)
           }, function (err) {
             service.instantiating = false
             reject(err)
@@ -96,10 +100,13 @@ Nali.prototype.resolveAll = function (fn) {
 }
 
 Nali.prototype.registerService = function (name, service) {
-
   if (!service) {
     throw new TypeError('service required')
   }
+  if (this.frozen) {
+    throw new Error('Container is frozen, cannot register new instance')
+  }
+
 
   const initable = typeof service === 'function'
   if (!initable) {
@@ -121,6 +128,19 @@ Nali.prototype.registerService = function (name, service) {
 }
 
 Nali.prototype.registerInstance = function (name, instance) {
+  if (!instance) {
+    throw new Error('Instance required')
+  }
+  if (this.frozen) {
+    throw new Error('Container is frozen, cannot register new instance')
+  }
+  this.instances[name] = instance
+  this.emit('newInstance', name)
+  this.emit('newInstance:' + name)
+}
+
+Nali.prototype._instantiated = function (name, instance) {
+  // used internally when instantiating a registeredService
   this.instances[name] = instance
   this.emit('newInstance', name)
   this.emit('newInstance:' + name)

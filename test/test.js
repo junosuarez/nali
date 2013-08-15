@@ -10,12 +10,29 @@ describe('Nali', function () {
 
   const Nali = require('../')
 
-  it('can register instances', function () {
-    var container = Nali()
-    var foo = {}
-    container.registerInstance('foo', foo)
+  describe('.registerInstance', function () {
+    it('can register instances', function () {
+      var container = Nali()
+      var foo = {}
+      container.registerInstance('foo', foo)
+
+    })
+
+    it('throws if null or undefined', function () {
+      var container = Nali()
+      expect(function () {
+      container.registerInstance('foo', null)  
+      }).to.throw(/required/)
+      expect(function () {
+      container.registerInstance('foo', undefined)  
+      }).to.throw(/required/)
+      
+
+    })
+
 
   })
+
 
   it('can register services', function () {
     var container = Nali()
@@ -307,7 +324,24 @@ describe('Nali', function () {
     // will wait for local service to instantiate even if a higher parent already
     // has an instance of the requested service available
 
+  })
 
+  describe('.freeze', function () {
+    it('prevents registering new instances', function () {
+      var container = Nali()
+      container.freeze()
+      expect(function () {
+        container.registerInstance('foo', {})
+      }).to.throw(/frozen/)
+    })
+    it('prevents registering new services', function () {
+      var container = Nali()
+      container.freeze()
+      expect(function () {
+        container.registerService('foo', function () {})
+      }).to.throw(/frozen/)
+    })
+    it('can stil instantiate new instances of already registered services')
   })
 
 })
