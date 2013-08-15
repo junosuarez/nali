@@ -31,63 +31,69 @@ Nali.prototype.dispose = function () {
 
 Nali.prototype.locate = function locate(name) {
   if (typeof name === 'function') {
-    return module.exports.resolveAll(name)
+    return this.resolveAll(name)
   }
 
-  if (!(name in instances)) {
+  if (!(name in this.instances)) {
     throw new Error('No instance of ' + name)
   }
-  return instances[name]
+  return this.instances[name]
 }
 
-module.exports.fetch = Nali
-
 // (name: String) => Promise
-module.exports.resolve = function (name) {
+Nali.prototype.resolve = function (name) {
+  const self = this
   return Q.promise(function (resolve, reject) {
 
     tryGetInstance()
 
     function tryGetInstance() {
-      if (name in instances) {
-        return resolve(Nali(name))
+      try {
+        if (name in self.instances) {
+          const instance = self.locate(name)
+          return resolve(instance)
+        }
+        self.once('newInstance:'+name, tryGetInstance)
+        tryInstantiate(name)
+      } catch (e) {
+        reject(e)
       }
-      events.once('newInstance:'+name, tryGetInstance)
-      tryInstantiate(name)
     }
 
     function tryInstantiate(name) {
-      if (name in services) {
-        const service = services[name]
+      if (name in self.services) {
+        const service = self.services[name]
         if (service.instantiating) {
           // because we're all singletons now :)
           // keep from making a new instance
           return
         }
         service.instantiating = true
-        return Q.all(service.params.map(Nali.resolve))
+        return Q.all(service.params.map(self.resolve.bind(self)))
           .then(function (args) {
             return service.init.apply(null, args)
           })
           .then(function (instance) {
             service.instantiating = false
-            Nali.registerInstance(name, instance)
+            self.registerInstance(name, instance)
           }, function (err) {
             service.instantiating = false
             reject(err)
           })
       }
 
-      events.once('newService:' + name, tryGetInstance)
+      self.once('newService:' + name, tryGetInstance)
 
     }
 
   })
 
 }
+// alias #fetch = #resolve
+Nali.prototype.fetch = Nali.prototype.resolve
 
-module.exports.resolveAll = function (fn) {
-  return Q.all(fninfo(fn).params.map(Nali.resolve))
+Nali.prototype.resolveAll = function (fn) {
+  return Q.all(fninfo(fn).params.map(this.resolve.bind(this)))
     .then(function (args) {
       return fn.apply(null, args)
     })
@@ -127,15 +133,6 @@ Nali.prototype.registerInstance = function (name, instance) {
   this.instances[name] = instance
   this.emit('newInstance', name)
   this.emit('newInstance:' + name)
-}
-
-module.exports.testReset = function () {
-  for (var i in services) {
-    delete services[i]
-  }
-  for (var i in instances) {
-    delete instances[i]
-  }
 }
 
 // unsupported

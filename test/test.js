@@ -1,6 +1,7 @@
 const chai = require('chai')
 chai.should()
 const Q = require('q')
+Q.longStackSupport = true
 const sinon = require('sinon')
 chai.use(require('sinon-chai'))
 const expect = chai.expect
@@ -10,41 +11,41 @@ describe('Nali', function () {
   const Nali = require('../')
 
   it('can register instances', function () {
-    Nali.testReset()
+    var container = Nali()
     var foo = {}
-    Nali.registerInstance('foo', foo)
+    container.registerInstance('foo', foo)
 
   })
 
   it('can register services', function () {
-    Nali.testReset()
+    var container = Nali()
 
     var apes = function (){}
     var mammals = function (){}
     var earth = function (){}
 
-    Nali.registerService('apes', apes)
-    Nali.registerService('mammals', mammals)
-    Nali.registerService('earth', earth)
+    container.registerService('apes', apes)
+    container.registerService('mammals', mammals)
+    container.registerService('earth', earth)
   })
 
   it('can locate instances of static services', function () {
-    Nali.testReset()
+    var container = Nali()
 
     var bar = {}
-    Nali.registerInstance('bar',bar)
-    Nali('bar').should.equal(bar)
+    container.registerInstance('bar',bar)
+    container.locate('bar').should.equal(bar)
 
   })
 
   it('can resolve multiple services', function (done) {
-    Nali.testReset()
+    var container = Nali()
     const K = function (x) { return function () { return x }}
-    Nali.registerService('a', K(1))
-    Nali.registerService('b', K(2))
-    Nali.registerService('c', K(3))
+    container.registerService('a', K(1))
+    container.registerService('b', K(2))
+    container.registerService('c', K(3))
 
-    Nali(function (a, b, c) {
+    container.locate(function (a, b, c) {
       (a + b + c).should.equal(6)
     })
     .then(done, done)
@@ -52,7 +53,7 @@ describe('Nali', function () {
   })
 
   it ('resolves dependencies', function (done) {
-    Nali.testReset()
+    var container = Nali()
 
     var inited = []
     var apes = function (mammals) {
@@ -70,12 +71,12 @@ describe('Nali', function () {
       inited.push('earth')
       return 'earthInstance'
     }
-    Nali.registerInstance('universe', 'universal')
-    Nali.registerService('apes', apes)
-    Nali.registerService('mammals', mammals)
-    Nali.registerService('earth', earth)
+    container.registerInstance('universe', 'universal')
+    container.registerService('apes', apes)
+    container.registerService('mammals', mammals)
+    container.registerService('earth', earth)
 
-    Nali.resolve('apes')
+    container.resolve('apes')
     .then(function (val){
       val.should.equal('apeInstance')
       inited.should.deep.equal([
@@ -88,7 +89,7 @@ describe('Nali', function () {
   })
 
   it ('resolves dependencies for services not yet registered', function (done) {
-    Nali.testReset()
+    var container = Nali()
 
     var inited = []
     var apes = function (mammals) {
@@ -106,11 +107,11 @@ describe('Nali', function () {
       inited.push('earth')
       return 'earthInstance'
     }
-    Nali.registerInstance('universe', 'universal')
-    Nali.registerService('apes', apes)
-    Nali.registerService('mammals', mammals)
+    container.registerInstance('universe', 'universal')
+    container.registerService('apes', apes)
+    container.registerService('mammals', mammals)
 
-    Nali.resolve('apes')
+    container.resolve('apes')
     .then(function (val){
       val.should.equal('apeInstance')
       inited.should.deep.equal([
@@ -122,13 +123,13 @@ describe('Nali', function () {
     .then(done, done)
 
     process.nextTick(function () {
-      Nali.registerService('earth', earth)
+      container.registerService('earth', earth)
     })
 
   })
 
   it ('lazy instantiated instances stick around', function (done) {
-    Nali.testReset()
+    var container = Nali()
 
     var apes = function (mammals) {
       return 'apeInstance'
@@ -139,33 +140,32 @@ describe('Nali', function () {
     var earth = function (universe) {
       return 'earthInstance'
     }
-    Nali.registerInstance('universe', 'universal')
-    Nali.registerService('apes', apes)
-    Nali.registerService('mammals', mammals)
-    Nali.registerService('earth', earth)
+    container.registerInstance('universe', 'universal')
+    container.registerService('apes', apes)
+    container.registerService('mammals', mammals)
+    container.registerService('earth', earth)
 
-    Nali.resolve('apes')
+    container.resolve('apes')
     .then(function (val){
 
-      Nali('apes').should.equal('apeInstance')
-      Nali('mammals').should.equal('mammalInstance')
-      Nali('earth').should.equal('earthInstance')
-      Nali('universe').should.equal('universal')
+      container.locate('apes').should.equal('apeInstance')
+      container.locate('mammals').should.equal('mammalInstance')
+      container.locate('earth').should.equal('earthInstance')
+      container.locate('universe').should.equal('universal')
     })
     .then(done, done)
 
   })
 
   it('won\'t instantiate a service if it is currently being instantiated', function (done) {
-    Nali.testReset()
-
+    var container = Nali()
     var dfd = Q.defer()
 
     var instantiations = 0
 
     var service = function () { return dfd.promise }
-    Nali.registerService('service', service)
-    Nali.on('newInstance', function () {
+    container.registerService('service', service)
+    container.on('newInstance', function () {
       instantiations++
     })
 
@@ -174,11 +174,11 @@ describe('Nali', function () {
     // do some shenanigans, one of which
     // should result in `service` being
     // instantiated
-    services.push(Nali.resolve('service'))
-    services.push(Nali.resolve('service'))
-    services.push(Nali.resolve('service'))
+    services.push(container.resolve('service'))
+    services.push(container.resolve('service'))
+    services.push(container.resolve('service'))
     process.nextTick(function () {
-      services.push(Nali.resolve('service'))
+      services.push(container.resolve('service'))
       dfd.resolve()
 
       // finally
@@ -193,7 +193,7 @@ describe('Nali', function () {
 
 
   it('won\'t will try instantiate a service if requested after an error', function (done) {
-    Nali.testReset()
+    var container = Nali()
 
     var instantiations = 0
     var attempts = 0
@@ -205,19 +205,19 @@ describe('Nali', function () {
       }
       return Q.reject(new Error('fail first'))
     }
-    Nali.registerService('service', service)
-    Nali.on('newInstance', function () {
+    container.registerService('service', service)
+    container.on('newInstance', function () {
       instantiations++
     })
 
-    Nali.resolve('service').then(function () {
+    container.resolve('service').then(function () {
       throw new Error('Should not be resolved')
     }, function (err) {
       // first instatiation failed
       err.message.should.equal('fail first')
     })
     .then(function () {
-      return Nali.resolve('service')
+      return container.resolve('service')
     })
     .then(function () {
       attempts.should.equal(2)
