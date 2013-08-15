@@ -4,11 +4,15 @@ const Q = require('q')
 const util = require('util')
 
 
-const Nali = module.exports = function(name) {
-  if (!(this instanceof Nali)) { return new Nali(name)}
+const Nali = module.exports = function(name, parentContainer) {
+  if (!(this instanceof Nali)) { return new Nali(name, parentContainer)}
+  this.name = name
+  this.parentContainer = parentContainer
+  this.childContainer = []
   this.services = {}
   this.instances = {}
   EventEmitter.call(this)
+  this.setMaxListeners(1000)
 }
 util.inherits(Nali, EventEmitter)
 
@@ -99,11 +103,6 @@ Nali.prototype.resolveAll = function (fn) {
     })
 }
 
-const events = new EventEmitter
-events.setMaxListeners(1000)
-
-module.exports.on = events.on.bind(events)
-
 Nali.prototype.registerService = function (name, service) {
 
   if (!service) {
@@ -133,6 +132,10 @@ Nali.prototype.registerInstance = function (name, instance) {
   this.instances[name] = instance
   this.emit('newInstance', name)
   this.emit('newInstance:' + name)
+}
+
+Nali.prototype.spawnChild = function (name) {
+  return new Nali(name, this)
 }
 
 // unsupported

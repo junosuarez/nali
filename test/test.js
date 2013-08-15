@@ -230,6 +230,9 @@ describe('Nali', function () {
   it('constructs a container', function () {
     var container = new Nali()
     container.should.be.instanceof(Nali)
+
+    var namedContainer = new Nali('alpha')
+    namedContainer.name.should.equal('alpha')
   })
 
   it('doesnt require new keyword', function () {
@@ -277,5 +280,30 @@ describe('Nali', function () {
     })
   })
   
+  describe('child containers', function () {
+    it('can spawn child containers', function () {
+      var container = Nali()
+      container.registerInstance('restaurant', {})
+      var childContainer = container.spawnChild('kitchen')  
+      childContainer.should.be.instanceof(Nali)
+      childContainer.name.should.equal('kitchen')
+    })
+
+    it('child containers can locate services in their parent containers', function () {
+      var container = Nali()
+      container.registerInstance('A', 'a')
+      var child = container.spawnChild()
+      child.registerInstance('B', 'a')
+      child.locate('A').should.equal('a')
+
+    })    
+    it('child containers can resolve services at any higher level in the parent chain')
+    it('child containers can override services in parent container chain')
+    it('child containers prefer locating own services')
+    // will wait for local service to instantiate even if a higher parent already
+    // has an instance of the requested service available
+
+
+  })
 
 })
