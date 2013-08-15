@@ -34,7 +34,7 @@ describe('Nali', function () {
 
     var bar = {}
     container.registerInstance('bar',bar)
-    container.locate('bar').should.equal(bar)
+    container.instances['bar'].should.equal(bar)
 
   })
 
@@ -45,7 +45,7 @@ describe('Nali', function () {
     container.registerService('b', K(2))
     container.registerService('c', K(3))
 
-    container.locate(function (a, b, c) {
+    container.resolve(function (a, b, c) {
       (a + b + c).should.equal(6)
     })
     .then(done, done)
@@ -148,10 +148,10 @@ describe('Nali', function () {
     container.resolve('apes')
     .then(function (val){
 
-      container.locate('apes').should.equal('apeInstance')
-      container.locate('mammals').should.equal('mammalInstance')
-      container.locate('earth').should.equal('earthInstance')
-      container.locate('universe').should.equal('universal')
+      container.instances['apes'].should.equal('apeInstance')
+      container.instances['mammals'].should.equal('mammalInstance')
+      container.instances['earth'].should.equal('earthInstance')
+      container.instances['universe'].should.equal('universal')
     })
     .then(done, done)
 
@@ -289,12 +289,16 @@ describe('Nali', function () {
       childContainer.name.should.equal('kitchen')
     })
 
-    it('child containers can locate services in their parent containers', function () {
+    it('child containers can resolve services in their parent containers', function (done) {
+      this.timeout(1)
       var container = Nali()
       container.registerInstance('A', 'a')
       var child = container.spawnChild()
       child.registerInstance('B', 'a')
-      child.locate('A').should.equal('a')
+      child.resolve('A').then(function (A) {
+        A.should.equal('a')
+      })
+      .then(done, done)
 
     })    
     it('child containers can resolve services at any higher level in the parent chain')

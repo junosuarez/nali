@@ -33,19 +33,11 @@ Nali.prototype.dispose = function () {
   this.removeAllListeners()
 }
 
-Nali.prototype.locate = function locate(name) {
+// (name: String) => Promise
+Nali.prototype.resolve = function (name) {
   if (typeof name === 'function') {
     return this.resolveAll(name)
   }
-
-  if (!(name in this.instances)) {
-    throw new Error('No instance of ' + name)
-  }
-  return this.instances[name]
-}
-
-// (name: String) => Promise
-Nali.prototype.resolve = function (name) {
   const self = this
   return Q.promise(function (resolve, reject) {
 
@@ -54,7 +46,7 @@ Nali.prototype.resolve = function (name) {
     function tryGetInstance() {
       try {
         if (name in self.instances) {
-          const instance = self.locate(name)
+          const instance = self.instances[name]
           return resolve(instance)
         }
         self.once('newInstance:'+name, tryGetInstance)
