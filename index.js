@@ -56,6 +56,21 @@ Nali.prototype.resolve = function (name) {
 
     tryGetInstance()
 
+    // local instance
+    // make instance from local service
+    // check parent
+    // if parent pending and local service is registered,
+    //  cancel from parent and wait for local service
+
+    if (self.parentContainer) {
+      self.parentContainer.resolve(name)
+        .then(function (instance) {
+          if (!(name in self.services)) {
+            ok(instance)
+          }
+        })
+    }
+
     function tryGetInstance() {
       try {
         if (name in self.instances) {

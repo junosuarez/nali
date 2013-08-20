@@ -307,7 +307,7 @@ describe('Nali', function () {
     })
 
     it('can resolve instances in their parent containers', function (done) {
-      this.timeout(1)
+      this.timeout(10)
       var container = Nali()
       container.registerInstance('A', 'a')
       var child = container.spawnChild()
@@ -318,7 +318,7 @@ describe('Nali', function () {
       .then(done, done)
 
     })    
-    it('can')
+
     it('can resolve services at any higher level in the parent chain')
     it('can override services in parent container chain')
     it('prefer locating own services')
