@@ -66,6 +66,16 @@ DI works similar to Angular. Service init functions state the names of their dep
 
 Return a Promises/A+ promise if you need to asynchronously instantiate a service
 
+## Resolution algorithm
+
+Work in progress.
+
+Try get local instance
+Try get new instance of local service
+Try get parent instance
+Try get new instance of parent service
+Etc
+
 ## not implemented
 
 - scopes

@@ -2,7 +2,7 @@ const EventEmitter = require('events').EventEmitter
 const fninfo = require('fninfo')
 const Q = require('q')
 const util = require('util')
-
+const offer = require('offer')
 
 const Nali = module.exports = function(name, parentContainer) {
   if (!(this instanceof Nali)) { return new Nali(name, parentContainer)}
@@ -44,6 +44,15 @@ Nali.prototype.resolve = function (name) {
   }
   const self = this
   return Q.promise(function (resolve, reject) {
+    const pending = []
+
+    function ok(instance) {
+      while(pending.length) {
+        // cancel listeners
+        pending.pop()()
+      }
+      resolve(instance)
+    }
 
     tryGetInstance()
 
@@ -51,9 +60,9 @@ Nali.prototype.resolve = function (name) {
       try {
         if (name in self.instances) {
           const instance = self.instances[name]
-          return resolve(instance)
+          return ok(instance)
         }
-        self.once('newInstance:'+name, tryGetInstance)
+        pending.push(offer.once(self, 'newInstance:'+name, tryGetInstance))
         tryInstantiate(name)
       } catch (e) {
         reject(e)
@@ -82,7 +91,7 @@ Nali.prototype.resolve = function (name) {
           })
       }
 
-      self.once('newService:' + name, tryGetInstance)
+      pending.push(offer.once(self, 'newService:' + name, tryGetInstance))
 
     }
 

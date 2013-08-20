@@ -306,7 +306,7 @@ describe('Nali', function () {
       childContainer.name.should.equal('kitchen')
     })
 
-    it('child containers can resolve services in their parent containers', function (done) {
+    it('can resolve instances in their parent containers', function (done) {
       this.timeout(1)
       var container = Nali()
       container.registerInstance('A', 'a')
@@ -318,9 +318,10 @@ describe('Nali', function () {
       .then(done, done)
 
     })    
-    it('child containers can resolve services at any higher level in the parent chain')
-    it('child containers can override services in parent container chain')
-    it('child containers prefer locating own services')
+    it('can')
+    it('can resolve services at any higher level in the parent chain')
+    it('can override services in parent container chain')
+    it('prefer locating own services')
     // will wait for local service to instantiate even if a higher parent already
     // has an instance of the requested service available
 
