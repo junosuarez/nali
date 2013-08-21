@@ -281,13 +281,13 @@ describe('Nali', function () {
       var container = new Nali()
       container.registerInstance('foo', {})
       container.dispose()
-      expect(container.instances).to.equal(null)
+      expect(Object.keys(container.instances)).to.deep.equal([])
     })
     it('drops service references', function () {
       var container = new Nali()
       container.registerService('qux', function () {})
       container.dispose()
-      expect(container.services).to.equal(null)
+      expect(Object.keys(container.services)).to.deep.equal([])
     })
     it('removes listeners', function () {
       var container = new Nali()
@@ -319,6 +319,28 @@ describe('Nali', function () {
 
     })    
 
+    it('', function (done) {
+      var parent = Nali('master')
+      parent.registerInstance('A', 'a')
+      parent.registerService('block', function (_container) {
+        var container = _container.spawnChild('block container')
+        container.registerInstance('B','b')
+        return container.resolve(function (A, B) {
+          return {
+            A: A,
+            B: B
+          }
+        })
+      })
+      parent.resolve(function (block) {
+        block.should.deep.equal({
+          A: 'a',
+          B: 'b'
+        })
+      })
+      .then(done, done)
+    })
+
     it('can resolve services at any higher level in the parent chain')
     it('can override services in parent container chain')
     it('prefer locating own services')
@@ -343,6 +365,59 @@ describe('Nali', function () {
       }).to.throw(/frozen/)
     })
     it('can stil instantiate new instances of already registered services')
+  })
+
+  describe('blocks', function () {
+    it('is the organizing principle for services within a container', function (done) {
+      var container = Nali('master')
+      container.registerService('log', function log() {})
+      var data = container.block('data')
+        .registerService('db', function db(log) {})
+      var core = container.block('core', {dependsOn: ['data']})
+        .registerService('domain', function domain(db, log) {})
+
+      var deps = container.trace()
+
+      deps.name.should.equal('master')
+      deps.blocks.should.have.property('data')
+      deps.blocks.data.services.should.deep.equal(['db'])
+      deps.blocks.data.dependsOn.should.deep.equal([])
+      deps.blocks.should.have.property('core')
+      deps.blocks.core.services.should.deep.equal(['domain'])
+      deps.blocks.core.dependsOn.should.deep.equal(['data'])
+
+      data.registerService('bad', function bad(domain){})
+      container.on('error', function (err) {
+        err.message.should.match(/block violation/i)
+        done()
+      })
+    })
+
+    it('enforces blocks in nested containers', function (done) {
+      var container = Nali('master')
+      container.block('A')
+        .registerService('a', function a() {})
+      container.block('B')
+        .registerService('b', function b(_container) {
+          var child = _container.spawnChild('child')
+          child.registerService('c', function c(a) {})
+        })
+
+      container.on('error', function (err) {
+        err.should.match(/foo/)
+        done()
+      })
+      container.resolve(function (b) {})
+
+      // container.resolve(function (b) {
+      //   //
+      // })
+      // .then(function () { throw new Error('should not be resolved')},
+      //   function (err) {
+      //     err.message.should.match(/foo/)
+      //   })
+      // .then(done, done)
+    })
   })
 
 })
