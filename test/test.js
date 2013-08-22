@@ -292,6 +292,31 @@ describe('Nali', function () {
     it('can stil instantiate new instances of already registered services')
   })
 
+  describe('.graph', function (done) {
+    var container = Nali('master')
+      .registerInstance('foo', function () {})
+      .registerInstance('baz', function () {})
+      .block('wizards')
+        .registerService('harry', function (foo) {})
+        .registerService('gandalf', function (_container) {
+          _container.spawnChild()
+            .registerInstance('grey', 1)
+            .registerInstance('white', 2)
+        })
+
+    container.resolve(function (gandalf) {
+      console.log('graph:', JSON.stringify(container.graph(), null, 2))
+    })
+    .then(function (x) {
+      console.log('ok')
+    }, function (e) { 
+      console.log('nok', e.stack)
+      throw e
+    })
+    .then(done, done)
+    
+  })
+
   describe('.registerService', function () {
     it('throws TypeError if no service constructor given', function () {
       var container = Nali()

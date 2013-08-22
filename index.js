@@ -144,7 +144,6 @@ Nali.prototype.resolve = function (name) {
 Nali.prototype.fetch = Nali.prototype.resolve
 
 Nali.prototype.resolveAll = function (fn) {
-
   var params = fninfo(fn).params
   if (this._opts.debug) {
     console.log(this.name + '/leaf: ' + params.join(', '))
@@ -152,7 +151,7 @@ Nali.prototype.resolveAll = function (fn) {
   
   return Q.all(params.map(this.resolve.bind(this)))
     .then(function (args) {
-      return fn.apply(null, args)
+      return fn.apply(fn, args)
     })
 }
 
@@ -348,21 +347,28 @@ function isBlockViolation(serviceName, container){
 
 }
 
-// () => Dictionary<serviceName: String, dependencies: Array<String>>
-Nali.prototype.traceGraph = function () {
+
+Nali.prototype.graph = function () {
   var self = this
-  var services = Object.keys(self.services).reduce(function (g, name) {
-    const service = self.services[name]
-    g[name] = service.params.slice()
-    return g
-  },{})
-  var children = self.childContainer.reduce(function (g, child) {
-     g[child.name] = child.traceGraph()
-     return g
-  }, {})
   return {
-    services: services,
-    children: children
+    services: self.services.map(function (service) {
+      return {
+        name: service.name,
+        dependsOn: service.dependsOn,
+        block: service.block && service.block.name,
+        lifestyle: service.lifestyle
+      }
+    }),
+    blocks: self.blocks.map(function (block) {
+      return{
+        name: block.name,
+        dependsOn: block.dependsOn,
+        services: block.services.map(Cu.to('name'))
+      }
+    }),
+    childContainers: self.childContainers.map(function (c) {
+      return c.graph()
+    })
   }
 }
 
@@ -376,6 +382,8 @@ const Service = module.exports.Service = function Service(name, dependsOn, const
 
   lifestyle = (typeof lifestyle === 'string' ? Service.lifestyles[lifestyle] : lifestyle)
     || Service.lifestyles.singleton
+
+  this.lifestyle = typeof lifestlye === 'string' ? lifestyle : (lifestyle && lifestyle.name) || 'other'
 
   this.getInstance = lifestyle.getInstance
   this.dispose = lifestyle.dispose
@@ -392,9 +400,11 @@ Service.prototype.toString = function () {
 
 Service.lifestyles = {
   singleton: {
+    name: 'singleton',
     getInstance: function () {
       console.log('getInstanceSingleton', this.name, !!this._instance, 'cons', !!this.constructor)
       if (this._instance) { return this._instance }
+      console.log('consing')
       this._instance = this.container.resolve(this.constructor)
       return this._instance
     },
