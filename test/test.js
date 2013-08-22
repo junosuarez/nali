@@ -5,6 +5,7 @@ Q.longStackSupport = true
 const sinon = require('sinon')
 chai.use(require('sinon-chai'))
 const expect = chai.expect
+const Cu = require('cu')
 
 describe('Nali', function () {
 
@@ -46,12 +47,16 @@ describe('Nali', function () {
     container.registerService('earth', earth)
   })
 
-  it('can locate instances of static services', function () {
+  it('can locate instances of static services', function (done) {
     var container = Nali()
 
     var bar = {}
     container.registerInstance('bar',bar)
-    container.instances['bar'].should.equal(bar)
+    container.resolve('bar')
+    .then(function (instance) {
+      instance.should.equal(bar)
+    })
+    .then(done, done)
 
   })
 
@@ -145,46 +150,16 @@ describe('Nali', function () {
 
   })
 
-  it ('lazy instantiated instances stick around', function (done) {
-    var container = Nali()
-
-    var apes = function (mammals) {
-      return 'apeInstance'
-    }
-    var mammals = function (earth) {
-      return 'mammalInstance'
-    }
-    var earth = function (universe) {
-      return 'earthInstance'
-    }
-    container.registerInstance('universe', 'universal')
-    container.registerService('apes', apes)
-    container.registerService('mammals', mammals)
-    container.registerService('earth', earth)
-
-    container.resolve('apes')
-    .then(function (val){
-
-      container.instances['apes'].should.equal('apeInstance')
-      container.instances['mammals'].should.equal('mammalInstance')
-      container.instances['earth'].should.equal('earthInstance')
-      container.instances['universe'].should.equal('universal')
-    })
-    .then(done, done)
-
-  })
-
   it('won\'t instantiate a service if it is currently being instantiated', function (done) {
     var container = Nali()
     var dfd = Q.defer()
 
     var instantiations = 0
 
-    var service = function () { return dfd.promise }
-    container.registerService('service', service)
-    container.on('newInstance', function () {
+    var service = function () { 
       instantiations++
-    })
+      return dfd.promise }
+    container.registerService('service', service)
 
     var services = []
 
@@ -208,42 +183,6 @@ describe('Nali', function () {
 
   })
 
-
-  it('won\'t will try instantiate a service if requested after an error', function (done) {
-    var container = Nali()
-
-    var instantiations = 0
-    var attempts = 0
-
-    var service = function () {
-      attempts++
-      if (attempts == 2) {
-        return Q.resolve('succeed second')
-      }
-      return Q.reject(new Error('fail first'))
-    }
-    container.registerService('service', service)
-    container.on('newInstance', function () {
-      instantiations++
-    })
-
-    container.resolve('service').then(function () {
-      throw new Error('Should not be resolved')
-    }, function (err) {
-      // first instatiation failed
-      err.message.should.equal('fail first')
-    })
-    .then(function () {
-      return container.resolve('service')
-    })
-    .then(function () {
-      attempts.should.equal(2)
-      instantiations.should.equal(1)
-    })
-    .then(done, done)
-
-  })
-
   it('constructs a container', function () {
     var container = new Nali()
     container.should.be.instanceof(Nali)
@@ -262,26 +201,12 @@ describe('Nali', function () {
       var container = new Nali()
       container.dispose.should.be.a('function')
     })
-    it('calls dispose on any managed instances which are IDisposable', function () {
+    it('calls dispose on services', function () {
       var container = new Nali()
-      var foo = {
-        dispose: sinon.spy()
-      }
-      var foo2 = {
-        dispose: sinon.spy()
-      }
-      container.registerInstance('foo', foo)
-      container.registerInstance('foo2', foo2)
+      var spy = {dispose: sinon.spy()}
+      container.services = [spy]
       container.dispose()
-      foo.dispose.should.have.been.called
-      foo2.dispose.should.have.been.called
-      foo.dispose.firstCall.thisValue.should.equal(foo)
-    })
-    it('disposes instances', function () {
-      var container = new Nali()
-      container.registerInstance('foo', {})
-      container.dispose()
-      expect(Object.keys(container.instances)).to.deep.equal([])
+      spy.dispose.should.have.been.called
     })
     it('drops service references', function () {
       var container = new Nali()
@@ -319,7 +244,7 @@ describe('Nali', function () {
 
     })    
 
-    it('', function (done) {
+    it('example', function (done) {
       var parent = Nali('master')
       parent.registerInstance('A', 'a')
       parent.registerService('block', function (_container) {
@@ -367,6 +292,24 @@ describe('Nali', function () {
     it('can stil instantiate new instances of already registered services')
   })
 
+  describe('.registerService', function () {
+    it('throws TypeError if no service constructor given', function () {
+      var container = Nali()
+      expect(function () {
+        container.registerService('foo')
+      }).to.throw(TypeError, /service constructor required/i)
+    })
+  })
+
+  describe('.registerInstance', function () {
+    it('throws TypeError if no instance given', function () {
+      var container = Nali()
+      expect(function () {
+        container.registerInstance('foo')
+      }).to.throw(TypeError, /instance required/i)
+    })
+  })
+
   describe('blocks', function () {
     it('is the organizing principle for services within a container', function (done) {
       var container = Nali('master')
@@ -376,48 +319,93 @@ describe('Nali', function () {
       var core = container.block('core', {dependsOn: ['data']})
         .registerService('domain', function domain(db, log) {})
 
-      var deps = container.trace()
-
-      deps.name.should.equal('master')
-      deps.blocks.should.have.property('data')
-      deps.blocks.data.services.should.deep.equal(['db'])
-      deps.blocks.data.dependsOn.should.deep.equal([])
-      deps.blocks.should.have.property('core')
-      deps.blocks.core.services.should.deep.equal(['domain'])
-      deps.blocks.core.dependsOn.should.deep.equal(['data'])
+      console.log('CONTAINER', container)
+      container.name.should.equal('master')
+      container.hasBlock('data').should.equal(true)
+      container.getBlock('data').services.map(Cu.to('name')).should.deep.equal(['db'])
+      container.getBlock('data').dependsOn.should.deep.equal([])
+      container.hasBlock('core').should.equal(true)
+      container.getBlock('core').services.map(Cu.to('name')).should.deep.equal(['domain'])
+      container.getBlock('core').dependsOn.should.deep.equal(['data'])
 
       data.registerService('bad', function bad(domain){})
       container.on('error', function (err) {
+        console.log('AAAA', err)
         err.message.should.match(/block violation/i)
         done()
       })
     })
 
+    it('tracks its services', function () {
+      var container = Nali('master')
+        .block('foo')
+          .registerService('bar', function () {})
+          .registerInstance('baz', 'baz')
+
+      console.log(container.getBlock('foo'))
+      container.getBlock('foo').services.map(Cu.to('name')).should.deep.equal(['bar','baz'])
+
+    })
+
+    it('errors if block-dependencies are violated', function (done) {
+
+      var container = Nali('master')
+
+      container.block('A')
+          .registerInstance('a','a')
+        .block('B')
+          .registerService('b', function(a){})
+
+
+        container.on('error', function (e) {
+          console.log('doneee')
+          e.message.should.match(/block violation/i)
+          console.log('yaaaa')
+          done()
+        })
+
+        //console.log('lissners', container.listeners('error'))
+    })
+
     it('enforces blocks in nested containers', function (done) {
+      
       var container = Nali('master')
       container.block('A')
         .registerService('a', function a() {})
-      container.block('B')
+      var x = container.block('B')
         .registerService('b', function b(_container) {
           var child = _container.spawnChild('child')
-          child.registerService('c', function c(a) {})
+          child.on('error', function (err) {
+              console.log('foooo')
+              err.should.match(/Block Violation/)
+              done()
+            })
+          console.log('child', child)
+          child.registerService('c', function c(a) {
+            console.log('ZOMGERR')
+          
+          })
         })
 
-      container.on('error', function (err) {
-        err.should.match(/foo/)
-        done()
-      })
       container.resolve(function (b) {})
 
-      // container.resolve(function (b) {
-      //   //
-      // })
-      // .then(function () { throw new Error('should not be resolved')},
-      //   function (err) {
-      //     err.message.should.match(/foo/)
-      //   })
-      // .then(done, done)
     })
   })
 
+})
+
+describe('Service', function () {
+  var Service = require('../').Service
+  it('toString', function () {
+    var service = new Service('foo', [], null, {name: 'container'}, {name: 'block'})
+    service.toString().should.equal('container.block/foo')
+  })
+})
+
+describe('Block', function () {
+  var Block = require('../').Block
+  it('toString', function () {
+    var block = new Block('block', {name: 'container'}, [])
+    block.toString().should.equal('container.block')
+  })
 })

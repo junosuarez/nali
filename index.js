@@ -5,30 +5,36 @@ const util = require('util')
 const offer = require('offer')
 const Cu = require('cu')
 
-const Nali = module.exports = function(name, parentContainer, opts) {
-  if (!(this instanceof Nali)) { return new Nali(name, parentContainer, opts)}
+
+const Nali = module.exports = function(name, opts) {
+  if (!(this instanceof Nali)) { return new Nali(name, opts)}
   this.name = name
-  this.opts = opts || (parentContainer && parentContainer.opts) || {}
+  
+  this.services = []
   this.blocks = []
+  
+  this._opts = opts || {}
   this._state = {}
-  this.parentContainer = parentContainer
-  this.childContainer = []
-  this.services = {}
-  this.instances = {}
+  this._instances = {}
+
+  this.parentContainer = null
+  this.childContainers = []
+  
   EventEmitter.call(this)
   this.setMaxListeners(1000)
+  // var self = this
+  // Object.keys(EventEmitter.prototype).forEach(function (key) {
+  //   if (typeof self[key] === 'function') {
+  //     self[key] = self[key].bind(self)
+  //   }
+  // })
 }
 util.inherits(Nali, EventEmitter)
 
 Nali.prototype.dispose = function () {
   const self = this
-  Object.keys(this.instances).forEach(function (name) {
-    const instance = self.instances[name]
-    // recursively dispose
-    // todo: replace with interface check
-    if (typeof instance.dispose === 'function') {
-      instance.dispose.call(instance)
-    }
+  this.services.forEach(function (service) {
+    service.dispose()
   })
 
   // todo: dispose child containers
@@ -46,11 +52,30 @@ function clear(obj) {
 }
 
 Nali.prototype.freeze = function () {
+  // todo move to this._state
   this.frozen = true
 }
 
+Nali.prototype.hasService = function (name) {
+  return this.services.some(function (service) {
+    return service.name === name
+  })
+}
+
+// (name: String) => Service?
+Nali.prototype.getService = function (name) {
+  for (var s in this.services) {
+    var service = this.services[s]
+    if (service.name === name) {
+      return service
+    }
+  }
+}
+
+
 // (name: String) => Promise
 Nali.prototype.resolve = function (name) {
+  console.log('resolve', name)
   if (typeof name === 'function') {
     return this.resolveAll(name)
   }
@@ -64,75 +89,52 @@ Nali.prototype.resolve = function (name) {
         break;
     }
 
+    // this container has service
+    var service = self.getService(name)
+    if (self.hasService(name)) {
+      setImmediate(function () {
+        resolve(
+          self.getService(name).getInstance()
+        )
+      })
+      return
+    }
 
-    const pending = []
+    // await future service
+    var pending = []
+    var checkParent = true
+
+    pending.push(offer.once(self, 'newService:' + name, function () {
+      checkParent = false
+      self.resolve(name).then(ok, notOk)
+    }))
+
+    // delegate to parent container
+    if (checkParent && self.parentContainer) {
+      console.log('delegating to parent')
+      self.parentContainer.resolve(name)
+        .then(function (instance) {
+          if (!checkParent) { return }
+          ok(instance)
+        }, function (err) {
+          if (!checkParent) { return }
+          notOk(err)
+        })
+    }
 
     function ok(instance) {
+      finalize()
+      resolve(instance)
+    }
+    function notOk(err) {
+      finalize()
+      reject(err)
+    }
+    function finalize() {
       while(pending.length) {
         // cancel listeners
         pending.pop()()
       }
-      resolve(instance)
-    }
-
-    tryGetInstance()
-
-    // local instance
-    // make instance from local service
-    // check parent
-    // if parent pending and local service is registered,
-    //  cancel from parent and wait for local service
-
-    if (self.parentContainer) {
-      self.parentContainer.resolve(name)
-        .then(function (instance) {
-          if (!(name in self.services)) {
-            ok(instance)
-          }
-        })
-    }
-
-    function tryGetInstance() {
-      try {
-        if (name in self.instances) {
-          const instance = self.instances[name]
-          return ok(instance)
-        }
-        pending.push(offer.once(self, 'newInstance:'+name, tryGetInstance))
-        tryInstantiate(name)
-      } catch (e) {
-        reject(e)
-      }
-    }
-
-    function tryInstantiate(name) {
-      if (name in self.services) {
-        const service = self.services[name]
-        if (service.instantiating) {
-          // because we're all singletons now :)
-          // keep from making a new instance
-          return
-        }
-        service.instantiating = true
-
-        if (self.opts.debug) {
-          console.log(self.name + '/' + name + ': ' + service.params.join(', '))
-        }
-        return Q.all(service.params.map(self.resolve.bind(self)))
-          .then(function (args) {
-            return service.init.apply(null, args)
-          })
-          .then(function (instance) {
-            service.instantiating = false
-            self._instantiated(name, instance)
-          }, function (err) {
-            service.instantiating = false
-            reject(err)
-          })
-      }
-
-      pending.push(offer.once(self, 'newService:' + name, tryGetInstance))
-
     }
 
   })
@@ -144,7 +146,7 @@ Nali.prototype.fetch = Nali.prototype.resolve
 Nali.prototype.resolveAll = function (fn) {
 
   var params = fninfo(fn).params
-  if (this.opts.debug) {
+  if (this._opts.debug) {
     console.log(this.name + '/leaf: ' + params.join(', '))
   }
   
@@ -154,65 +156,93 @@ Nali.prototype.resolveAll = function (fn) {
     })
 }
 
-Nali.prototype.registerService = function (name, service) {
-  if (!service) {
-    throw new TypeError('service required')
+function checkDependency(name, context) {
+  //console.log('cD', name, context)
+  if (name === '_container') { return true }
+  if (context === null) { return null }
+  var container = context instanceof Nali ? context : context.container
+  var block = context.block instanceof Block ? context.block : (context._state && context._state.block || undefined)
+  var dep = container.getService(name)
+  if (!dep) {
+    return checkDependency(name, container.parentContainer)
+  }
+  return block === dep.block
+      || !dep.block
+      || (block &&  Cu.contains(block.dependsOn, dep.block.name))
+}
+
+function check(service) {
+  console.log('checking', service.name)
+  var errs = service.dependsOn.reduce(function (acc, dep) {
+    console.log(service.name + ' dependsOn ' + dep)
+
+      //console.log(service.block.name, depService.block.name, service.block === depService.block)
+      if (!checkDependency(dep, service)) {
+        
+        var err = new Error('Block Violation: service `' + service + '` has an illegal dependency on `' + dep + '`. Services in `' + (service.block || service.container.name) + '` cannot have dependencies in ')//`' + depService.block +'`.')
+        console.log('CHECK ERROR', err)
+        acc.push(err)
+      }
+
+    return acc
+  }, [])
+  return errs
+}
+
+Nali.prototype.registerService = function (name, constructor) {
+  var container = this
+  if (!constructor) {
+    throw new TypeError('Service constructor required')
   }
   if (this.frozen) {
     throw new Error('Container is frozen, cannot register new instance')
   }
+  
+  var block = container._state.block
 
-  const initable = typeof service === 'function'
-  if (!initable) {
-    throw new TypeError('Service ' + name + ' must be an init function')
-  }
-
-  if (name in this.services) {
-    console.log('overwriting service ' + name + ' at', (new Error).stack)
-  }
-
-  var serviceResource = {
-    init: service,
-    params: fninfo(service).params
-  }
-
-  if (this._state.block) {
-    this.blocks[this._state.block].services.push(name)
-    serviceResource.block = this._state.block
-  }
-
-
-
-  this.services[name] = serviceResource
-  var self = this
+  var dependsOn = fninfo(constructor).params
+  var service = new Service(name, dependsOn, constructor, container, block, Service.lifestyles.singleton)
+  
   setImmediate(function () {
-    if (self.disposed) { return }
-    if (!self.services) console.log('SDF', self.services, self, name)
-    Object.keys(self.services).forEach(function (name) {
-      console.log(self.name, self.services[name].block, name)
+    var errs = check(service).map(function (err) {
+      console.log('lsss', container, container.listeners('error')[0])
+      container.emit('error', err)
     })
-    if (isBlockViolation(name, self)) {
-      console.log('ERRR')
-      self.emit('error', new Error('Block violation'))
-    }
+
+    if (!errs.length) {
+      service._checked = true
+    }    
   })
+
+  this.services.push(service)
+  if (block) {
+    block.services.push(service)
+  }
+  service._checked = false
 
   this.emit('newService', name)
   this.emit('newService:' + name)
+  
   return this
 }
 
 Nali.prototype.registerInstance = function (name, instance) {
   if (!instance) {
-    throw new Error('Instance required')
+    throw new TypeError('Instance required')
   }
   if (this.frozen) {
     throw new Error('Container is frozen, cannot register new instance')
   }
-  if (this._state) {}
-  this.instances[name] = instance
-  this.emit('newInstance', name)
-  this.emit('newInstance:' + name)
+
+  var service = new Service(name, [], null, this, this._state.block, Service.lifestyles.singleton)
+  service._instance = instance
+  this.services.push(service)
+  if (this._state.block) {
+    this._state.block.services.push(service)
+  }
+
+  this.emit('newService', name)
+  this.emit('newService:' + name)
   return this
 }
 
@@ -224,24 +254,41 @@ Nali.prototype._instantiated = function (name, instance) {
 }
 
 Nali.prototype.spawnChild = function (name) {
-  var child = new Nali(name, this)
-  this.childContainer.push(child)
+  var child = new Nali(name)
+  child.parentContainer = this
+  this.childContainers.push(child)
   return child
 }
 
+Nali.prototype.hasBlock = function (name) {
+  return this.blocks.some(function (block) {
+    return block.name === name
+  })
+}
+
+// (String) => Block?
+Nali.prototype.getBlock = function (name) {
+  for (var i in this.blocks) {
+    var block = this.blocks[i]
+    if (block.name === name) {
+      return block
+    }
+  }
+}
+
 Nali.prototype.block = function (name, opts) {
-  if (this.blocks[name]) {
-    this._state.block = name
-    return this
+  if (this.hasBlock(name)) {
+    return State({block: this.getBlock(name)}, this)
   }
 
   opts = opts || {}
-  this.blocks[name] = {
-    services: [],
-    dependsOn: opts.dependsOn ? [].concat(opts.dependsOn) : [],
-    childContainers: []
-  }
-  return State({block: name}, this)
+  var block = new Block(
+    name,
+    this,
+    opts.dependsOn ? [].concat(opts.dependsOn) : []
+  )
+  this.blocks.push(block)
+  return State({block: block}, this)
 }
 
 function State(state, obj) {
@@ -319,3 +366,53 @@ Nali.prototype.traceGraph = function () {
   }
 }
 
+
+const Service = module.exports.Service = function Service(name, dependsOn, constructor, container, block, lifestyle) {
+  this.name = name
+  this.dependsOn = dependsOn
+  this.constructor = constructor
+  this.container = container
+  this.block = block
+
+  lifestyle = (typeof lifestyle === 'string' ? Service.lifestyles[lifestyle] : lifestyle)
+    || Service.lifestyles.singleton
+
+  this.getInstance = lifestyle.getInstance
+  this.dispose = lifestyle.dispose
+}
+
+Service.prototype.toString = function () {
+  var str = ''
+  if (this.container) { str += this.container.name }
+  if (this.block) { str += '.' + this.block.name}
+  if (str.length) { str += '/' }
+  str += this.name
+  return str
+}
+
+Service.lifestyles = {
+  singleton: {
+    getInstance: function () {
+      console.log('getInstanceSingleton', this.name, !!this._instance, 'cons', !!this.constructor)
+      if (this._instance) { return this._instance }
+      this._instance = this.container.resolve(this.constructor)
+      return this._instance
+    },
+    dispose: function () {
+
+    }
+  }
+}
+
+const Block = module.exports.Block = function Block(name, container, dependsOn) {
+  this.name = name
+  this.dependsOn = dependsOn
+  this.services = []
+  this.container = container
+}
+Block.prototype.toString = function () {
+  var str = ''
+  if (this.container) { str += this.container.name + '.' }
+  str += this.name
+  return str
+}
