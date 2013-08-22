@@ -4,8 +4,10 @@ const Q = require('q')
 Q.longStackSupport = true
 const sinon = require('sinon')
 chai.use(require('sinon-chai'))
+chai.use(require('chai-interface'))
 const expect = chai.expect
 const Cu = require('cu')
+
 
 describe('Nali', function () {
 
@@ -428,6 +430,18 @@ describe('Nali', function () {
 
 describe('Service', function () {
   var Service = require('../').Service
+  it('has interface', function () {
+    var service = new Service('foo', [], function () {}, {}, {}, 'singleton')
+    service.should.have.interface({
+      id: String,
+      name: String,
+      dependsOn: Array,
+      constructor: Function,
+      container: Object,
+      block: Object,
+      lifestyle: String
+    })
+  })
   it('toString', function () {
     var service = new Service('foo', [], null, {name: 'container'}, {name: 'block'})
     service.toString().should.equal('container.block/foo')
@@ -436,6 +450,16 @@ describe('Service', function () {
 
 describe('Block', function () {
   var Block = require('../').Block
+  it('has interface', function () {
+    var block = new Block('foo', {}, [])
+    block.should.have.interface({
+      id: String,
+      name: String,
+      dependsOn: Array,
+      services: Array,
+      container: Object
+    })
+  })
   it('toString', function () {
     var block = new Block('block', {name: 'container'}, [])
     block.toString().should.equal('container.block')

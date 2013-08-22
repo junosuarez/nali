@@ -4,6 +4,7 @@ const Q = require('q')
 const util = require('util')
 const offer = require('offer')
 const Cu = require('cu')
+const uuid = require('uuid')
 
 
 const Nali = module.exports = function(name, opts) {
@@ -170,6 +171,17 @@ function checkDependency(name, context) {
   return block === dep.block
       || !dep.block
       || (block &&  Cu.contains(block.dependsOn, dep.block.name))
+}
+
+function resolveDependency(name, context) {
+  if (name === '_container') { return {name: '_container'} }
+  if (context === null) { return {name: name} }
+  var container = context instanceof Nali ? context : context.container
+  var dep = container.getService(name)
+  if (!dep) {
+    return resolveDependency(name, container.parentContainer)
+  }
+  return dep
 }
 
 function check(service) {
@@ -355,14 +367,24 @@ Nali.prototype.graph = function () {
   return {
     services: self.services.map(function (service) {
       return {
+        id: service.id,
         name: service.name,
-        dependsOn: service.dependsOn,
+        dependsOn: service.dependsOn.map(function (dep) {
+          var d = resolveDependency(dep, service)
+          return {
+            id: d.id,
+            name: d.name,
+            container: d.container && d.container.name,
+            block: d.block && d.block.name
+          }
+        }),
         block: service.block && service.block.name,
         lifestyle: service.lifestyle
       }
     }),
     blocks: self.blocks.map(function (block) {
       return{
+        id: block.id,
         name: block.name,
         dependsOn: block.dependsOn,
         services: block.services.map(Cu.to('name'))
@@ -376,6 +398,7 @@ Nali.prototype.graph = function () {
 
 
 const Service = module.exports.Service = function Service(name, dependsOn, constructor, container, block, lifestyle) {
+  this.id = uuid.v4()
   this.name = name
   this.dependsOn = dependsOn
   this.constructor = constructor
@@ -417,6 +440,7 @@ Service.lifestyles = {
 }
 
 const Block = module.exports.Block = function Block(name, container, dependsOn) {
+  this.id = uuid.v4()
   this.name = name
   this.dependsOn = dependsOn
   this.services = []
