@@ -37,10 +37,12 @@ Nali.prototype.dispose = function () {
     service.dispose()
   })
 
-  // todo: dispose child containers
   clear(this.instances)
   clear(this.services)
   this.removeAllListeners()
+  this.childContainers.forEach(function (childContainer) {
+    childContainer.dispose()
+  })
   this.disposed = true
 }
 

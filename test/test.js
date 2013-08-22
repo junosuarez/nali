@@ -220,6 +220,13 @@ describe('Nali', function () {
       container.dispose()
       container.removeAllListeners.should.have.been.called
     })
+    it('disposes child containers', function () {
+      var container = new Nali()
+      var spy = {dispose: sinon.spy()}
+      container.childContainers.push(spy)
+      container.dispose()
+      spy.dispose.should.have.been.called
+    })
   })
   
   describe('child containers', function () {
