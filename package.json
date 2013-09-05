@@ -29,5 +29,15 @@
     "offer": "~1.0.1",
     "cu": "~0.6.0",
     "uuid": "~1.4.1"
+  },
+  "jshintConfig": {
+    "curly": true,
+    "quotmark": "single",
+    "unused": true,
+    "undef": true,
+    "asi": true,
+    "node": true,
+    "strict": false,
+    "esnext": true
   }
 }
