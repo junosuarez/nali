@@ -282,7 +282,7 @@ describe('Nali', function () {
     // has an instance of the requested service available
 
   })
-
+g
   describe('.freeze', function () {
     it('prevents registering new instances', function () {
       var container = Nali()
@@ -298,26 +298,31 @@ describe('Nali', function () {
         container.registerService('foo', function () {})
       }).to.throw(/frozen/)
     })
-    it('can stil instantiate new instances of already registered services')
+    it('can still instantiate new instances of already registered services')
   })
 
   describe('.graph', function (done) {
     var container = Nali('master')
-      .registerInstance('foo', function () {})
-      .registerInstance('baz', function () {})
-      .block('wizards')
-        .registerService('harry', function (foo) {})
-        .registerService('gandalf', function (_container) {
-          _container.spawnChild()
-            .registerInstance('grey', 1)
-            .registerInstance('white', 2)
-        })
+      .registerInstance('log', function () {})
+      .registerInstance('stats', function () {})
+      .block('web', {dependsOn: ['core', 'render']})
+        .registerInstance('http', ' ')
+        .registerInstance('sockets', ' ')
+      .block('core', {dependsOn:['data']})
+        .registerInstance('userMgr', function () {})
+        .registerInstance('entityMgr', function () {})
+        .registerInstance('etcMgr', function () {})
+      .block('render', {dependsOn: ['core', 'data']})
+        .registerInstance('rendererLocator',' ')
+      .block('data')
+        .registerInstance('db', function () {})
+        .registerInstance('redis', function () {})
 
-    container.resolve(function (gandalf) {
+    container.resolve(function (db) {
       console.log('graph:', JSON.stringify(container.graph(), null, 2))
     })
-    .then(function (x) {
-      console.log('ok')
+    .then(function () {
+      console.log('ok') 
     }, function (e) { 
       console.log('nok', e.stack)
       throw e

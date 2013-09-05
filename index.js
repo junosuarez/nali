@@ -6,6 +6,12 @@ const offer = require('offer')
 const Cu = require('cu')
 const uuid = require('uuid')
 
+var log = function () {
+  if (!module.exports.debug) { return }
+  console.log.apply(console, arguments)
+}
+var debug = log
+
 
 const Nali = module.exports = function(name, opts) {
   if (!(this instanceof Nali)) { return new Nali(name, opts)}
@@ -78,10 +84,10 @@ Nali.prototype.getService = function (name) {
 
 // (name: String) => Promise
 Nali.prototype.resolve = function (name) {
-  console.log('resolve', name)
   if (typeof name === 'function') {
-    return this.resolveAll(name)
+    return this.inject(name)
   }
+  log('resolve', name)
   const self = this
   return Q.promise(function (resolve, reject) {
 
@@ -89,6 +95,7 @@ Nali.prototype.resolve = function (name) {
     switch (name) {
       case '_container':
         resolve(self)
+        return;
         break;
     }
 
@@ -114,10 +121,11 @@ Nali.prototype.resolve = function (name) {
 
     // delegate to parent container
     if (checkParent && self.parentContainer) {
-      console.log('delegating to parent')
+      log('delegating to parent')
       self.parentContainer.resolve(name)
         .then(function (instance) {
           if (!checkParent) { return }
+          debug('resolving ' + name + ' from parent ' + self.parentContainer.name)
           ok(instance)
         }, function (err) {
           if (!checkParent) { return }
@@ -133,7 +141,11 @@ Nali.prototype.resolve = function (name) {
       finalize()
       reject(err)
     }
+    var t = setTimeout(function () {
+      log('waiting on ' + name)
+    }, 5000)
     function finalize() {
+      clearTimeout(t)
       while(pending.length) {
         // cancel listeners
         pending.pop()()
@@ -146,28 +158,30 @@ Nali.prototype.resolve = function (name) {
 // alias #fetch = #resolve
 Nali.prototype.fetch = Nali.prototype.resolve
 
-Nali.prototype.resolveAll = function (fn) {
+Nali.prototype.inject = function (fn) {
   var params = fninfo(fn).params
-  if (this._opts.debug) {
-    console.log(this.name + '/leaf: ' + params.join(', '))
-  }
+
+  debug(this.name + '/leaf: ' + params.join(', ') + ' ' + JSON.stringify(fn.ResponseRenderer || {}) )
   
   return Q.all(params.map(this.resolve.bind(this)))
     .then(function (args) {
+      //if (fn.ResponseRenderer) { console.log(JSON.stringify(fn.ResponseRenderer),params,args) }
       return fn.apply(fn, args)
     })
 }
 
 function checkDependency(name, context) {
-  //console.log('cD', name, context)
+  // log('cD', name, context)
   if (name === '_container') { return true }
-  if (context === null) { return null }
+  if (context === null) { log('nope'); return null }
   var container = context instanceof Nali ? context : context.container
   var block = context.block instanceof Block ? context.block : (context._state && context._state.block || undefined)
   var dep = container.getService(name)
+  // log('dep', dep)
   if (!dep) {
     return checkDependency(name, container.parentContainer)
   }
+
   return block === dep.block
       || !dep.block
       || (block &&  Cu.contains(block.dependsOn, dep.block.name))
@@ -185,16 +199,23 @@ function resolveDependency(name, context) {
 }
 
 function check(service) {
-  console.log('checking', service.name)
+  log('checking', service.name)
   var errs = service.dependsOn.reduce(function (acc, dep) {
-    console.log(service.name + ' dependsOn ' + dep)
+    log(service.name + ' dependsOn ' + dep)
 
-      //console.log(service.block.name, depService.block.name, service.block === depService.block)
-      if (!checkDependency(dep, service)) {
-        
-        var err = new Error('Block Violation: service `' + service + '` has an illegal dependency on `' + dep + '`. Services in `' + (service.block || service.container.name) + '` cannot have dependencies in ')//`' + depService.block +'`.')
-        console.log('CHECK ERROR', err)
+      var check = checkDependency(dep, service)
+
+      //log(service.block.name, depService.block.name, service.block === depService.block)
+      if (check === false) {
+        log('blocks', dep.block, service.block)
+        var err = new Error('Block Violation: service `' + service + '` has an illegal dependency on `' + dep + '`. Services in `' + (service.block || service.container.name) + '` cannot have dependencies in ' + dep.block +'`.')
+        log('CHECK ERROR', err)
         acc.push(err)
+      }
+      if (check === null) {
+        // we don't have enough to go on
+        // dependencies haven't been validated,
+        // but they're not statically wrong
       }
 
     return acc
@@ -218,7 +239,7 @@ Nali.prototype.registerService = function (name, constructor) {
   
   setImmediate(function () {
     var errs = check(service).map(function (err) {
-      console.log('lsss', container, container.listeners('error')[0])
+      log('lsss', container, container.listeners('error')[0])
       container.emit('error', err)
     })
 
@@ -325,14 +346,14 @@ Nali.prototype.trace = function () {
   Object.keys(this.blocks).forEach(function (blockName) {
     var block = self.blocks[blockName]
     block.services.forEach(function(serviceName) {
-      console.log(blockName + '/' +serviceName)
+      log(blockName + '/' +serviceName)
       var service = self.services[serviceName]
-      console.log(service.block,',', blockName)
-      console.log(service.params)
+      log(service.block,',', blockName)
+      log(service.params)
       service.params.forEach(function (depName) {
         var dep = self.services[depName]
         if (!dep) { return }
-        console.log(blockName,'-',serviceName,':',depName,':', dep.block, dep.block === service.block)
+        log(blockName,'-',serviceName,':',depName,':', dep.block, dep.block === service.block)
         if (dep.block && dep.block !== blockName && !Cu.contains(block.dependsOn, dep.block)) {
           throw new Error('block violation: service `' + service.block +':' + serviceName + '` has an illegal dependency on `' + dep.block + ':' + depName +'`. Services in `' + service.block + '` cannot have dependencies in `' + dep.block +'`.')
         }
@@ -345,16 +366,16 @@ Nali.prototype.trace = function () {
 
 function isBlockViolation(serviceName, container){
   var service = container.services[serviceName]
-  if (!service) console.log('could not find ', serviceName, 'in',container.name)
+  if (!service) log('could not find ', serviceName, 'in',container.name)
   var blockA = service.block
 
-  console.log(service.params)
+  log(service.params)
   return service.params.some(function (depName) {
     var dep = container.services[depName]
     if (!dep) { return }
-    console.log(blockA,'-',serviceName,':',depName,':', dep.block, dep.block === service.block)
+    log(blockA,'-',serviceName,':',depName,':', dep.block, dep.block === service.block)
     if (dep.block && dep.block !== blockA && !Cu.contains(container.blocks[service.block].dependsOn, dep.block)) {
-      console.log('BLOCK VIO')
+      log('BLOCK VIO')
       return true //throw new Error('block violation: service `' + service.block +':' + serviceName + '` has an illegal dependency on `' + dep.block + ':' + depName +'`. Services in `' + service.block + '` cannot have dependencies in `' + dep.block +'`.')
     }
   })
@@ -365,6 +386,7 @@ function isBlockViolation(serviceName, container){
 Nali.prototype.graph = function () {
   var self = this
   return {
+    name: self.name,
     services: self.services.map(function (service) {
       return {
         id: service.id,
@@ -427,9 +449,10 @@ Service.lifestyles = {
   singleton: {
     name: 'singleton',
     getInstance: function () {
-      console.log('getInstanceSingleton', this.name, !!this._instance, 'cons', !!this.constructor)
+      log('getInstanceSingleton', this.name, !!this._instance, 'cons', !!this.constructor)
       if (this._instance) { return this._instance }
-      console.log('consing')
+      log('consing')
+      this.container.emit('newInstance', this.name)
       this._instance = this.container.resolve(this.constructor)
       return this._instance
     },
