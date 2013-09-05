@@ -282,7 +282,7 @@ describe('Nali', function () {
     // has an instance of the requested service available
 
   })
-g
+
   describe('.freeze', function () {
     it('prevents registering new instances', function () {
       var container = Nali()
