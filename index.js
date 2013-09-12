@@ -6,6 +6,9 @@ const offer = require('offer')
 const Cu = require('cu')
 const uuid = require('uuid')
 
+const Block = require('./block')
+const Service = require('./service')
+
 var log = function () {
   if (!module.exports.debug) { return }
   console.log.apply(console, arguments)
@@ -16,17 +19,18 @@ var debug = log
 const Nali = module.exports = function(name, opts) {
   if (!(this instanceof Nali)) { return new Nali(name, opts)}
   this.name = name
-  
+
   this.services = []
   this.blocks = []
-  
+  this.handlers = []
+
   this._opts = opts || {}
   this._state = {}
   this._instances = {}
 
   this.parentContainer = null
   this.childContainers = []
-  
+
   EventEmitter.call(this)
   this.setMaxListeners(1000)
   // var self = this
@@ -37,6 +41,11 @@ const Nali = module.exports = function(name, opts) {
   // })
 }
 util.inherits(Nali, EventEmitter)
+
+Nali.prototype.use = function (handler) {
+  this.handlers.push(handler)
+  return this
+}
 
 Nali.prototype.dispose = function () {
   const self = this
@@ -158,15 +167,21 @@ Nali.prototype.resolve = function (name) {
 // alias #fetch = #resolve
 Nali.prototype.fetch = Nali.prototype.resolve
 
-Nali.prototype.inject = function (fn) {
+Nali.prototype.inject = function (fn, config) {
   var params = fninfo(fn).params
 
   debug(this.name + '/leaf: ' + params.join(', ') + ' ' + JSON.stringify(fn.ResponseRenderer || {}) )
-  
+  var self = this
   return Q.all(params.map(this.resolve.bind(this)))
     .then(function (args) {
       //if (fn.ResponseRenderer) { console.log(JSON.stringify(fn.ResponseRenderer),params,args) }
       return fn.apply(fn, args)
+    })
+    .then(function (instance) {
+      // a
+      return self.handlers.reduce(function (instance, handler) {
+        return handler(instance, config)
+      }, instance)
     })
 }
 
@@ -280,11 +295,17 @@ Nali.prototype.registerInstance = function (name, instance) {
   return this
 }
 
+function instantiate(self, name, instance, config) {
+
+}
+
 Nali.prototype._instantiated = function (name, instance) {
   // used internally when instantiating a registeredService
-  this.instances[name] = instance
-  this.emit('newInstance', name)
-  this.emit('newInstance:' + name)
+  this._instances[name] = instance
+  var self = this
+  self.emit('newInstance', name)
+  self.emit('newInstance:' + name)
+
 }
 
 Nali.prototype.spawnChild = function (name) {
@@ -416,62 +437,4 @@ Nali.prototype.graph = function () {
       return c.graph()
     })
   }
-}
-
-
-const Service = module.exports.Service = function Service(name, dependsOn, constructor, container, block, lifestyle) {
-  this.id = uuid.v4()
-  this.name = name
-  this.dependsOn = dependsOn
-  this.constructor = constructor
-  this.container = container
-  this.block = block
-
-  lifestyle = (typeof lifestyle === 'string' ? Service.lifestyles[lifestyle] : lifestyle)
-    || Service.lifestyles.singleton
-
-  this.lifestyle = typeof lifestlye === 'string' ? lifestyle : (lifestyle && lifestyle.name) || 'other'
-
-  this.getInstance = lifestyle.getInstance
-  this.dispose = lifestyle.dispose
-}
-
-Service.prototype.toString = function () {
-  var str = ''
-  if (this.container) { str += this.container.name }
-  if (this.block) { str += '.' + this.block.name}
-  if (str.length) { str += '/' }
-  str += this.name
-  return str
-}
-
-Service.lifestyles = {
-  singleton: {
-    name: 'singleton',
-    getInstance: function () {
-      log('getInstanceSingleton', this.name, !!this._instance, 'cons', !!this.constructor)
-      if (this._instance) { return this._instance }
-      log('consing')
-      this.container.emit('newInstance', this.name)
-      this._instance = this.container.resolve(this.constructor)
-      return this._instance
-    },
-    dispose: function () {
-
-    }
-  }
-}
-
-const Block = module.exports.Block = function Block(name, container, dependsOn) {
-  this.id = uuid.v4()
-  this.name = name
-  this.dependsOn = dependsOn
-  this.services = []
-  this.container = container
-}
-Block.prototype.toString = function () {
-  var str = ''
-  if (this.container) { str += this.container.name + '.' }
-  str += this.name
-  return str
 }
