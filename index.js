@@ -22,7 +22,7 @@ const Nali = module.exports = function(name, opts) {
 
   this.services = []
   this.blocks = []
-  this.handlers = []
+  this.behaviors = []
 
   this._opts = opts || {}
   this._state = {}
@@ -42,8 +42,8 @@ const Nali = module.exports = function(name, opts) {
 }
 util.inherits(Nali, EventEmitter)
 
-Nali.prototype.use = function (handler) {
-  this.handlers.push(handler)
+Nali.prototype.use = function (behavior) {
+  this.behaviors.push(behavior)
   return this
 }
 
@@ -178,7 +178,7 @@ Nali.prototype.inject = function (fn, config) {
       return fn.apply(fn, args)
     })
     .then(function (instance) {
-      return handle(self, instance, config)
+      return handleBehaviors(self, instance, config)
     })
 }
 
@@ -284,11 +284,11 @@ Nali.prototype.registerInstance = function (name, instance, config) {
   return this.registerService(name, function () { return instance }, config)
 }
 
-function handle(container, instance, config) {
-  if (!container.handlers.length) { return instance }
+function handleBehaviors(container, instance, config) {
+  if (!container.behaviors.length) { return instance }
 
-  instance = container.handlers.reduce(function (instance, handler) {
-    return handler(instance, config)
+  instance = container.behaviors.reduce(function (instance, behavior) {
+    return behavior(instance, config)
   }, instance)
   return instance
 }
