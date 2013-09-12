@@ -178,10 +178,7 @@ Nali.prototype.inject = function (fn, config) {
       return fn.apply(fn, args)
     })
     .then(function (instance) {
-      // a
-      return self.handlers.reduce(function (instance, handler) {
-        return handler(instance, config)
-      }, instance)
+      return handle(self, instance, config)
     })
 }
 
@@ -238,20 +235,21 @@ function check(service) {
   return errs
 }
 
-Nali.prototype.registerService = function (name, constructor) {
+Nali.prototype.registerService = function (name, constructor, config) {
   var container = this
+  if (container.frozen) {
+    throw new Error('Container is frozen, cannot register new instance')
+  }
   if (!constructor) {
     throw new TypeError('Service constructor required')
   }
-  if (this.frozen) {
-    throw new Error('Container is frozen, cannot register new instance')
-  }
-  
+
+
   var block = container._state.block
 
   var dependsOn = fninfo(constructor).params
-  var service = new Service(name, dependsOn, constructor, container, block, Service.lifestyles.singleton)
-  
+  var service = new Service(name, dependsOn, constructor, container, block, Service.lifestyles.singleton, config)
+
   setImmediate(function () {
     var errs = check(service).map(function (err) {
       log('lsss', container, container.listeners('error')[0])
@@ -260,7 +258,7 @@ Nali.prototype.registerService = function (name, constructor) {
 
     if (!errs.length) {
       service._checked = true
-    }    
+    }
   })
 
   this.services.push(service)
@@ -271,11 +269,11 @@ Nali.prototype.registerService = function (name, constructor) {
 
   this.emit('newService', name)
   this.emit('newService:' + name)
-  
+
   return this
 }
 
-Nali.prototype.registerInstance = function (name, instance) {
+Nali.prototype.registerInstance = function (name, instance, config) {
   if (!instance) {
     throw new TypeError('Instance required')
   }
@@ -283,20 +281,16 @@ Nali.prototype.registerInstance = function (name, instance) {
     throw new Error('Container is frozen, cannot register new instance')
   }
 
-  var service = new Service(name, [], null, this, this._state.block, Service.lifestyles.singleton)
-  service._instance = instance
-  this.services.push(service)
-  if (this._state.block) {
-    this._state.block.services.push(service)
-  }
-
-  this.emit('newService', name)
-  this.emit('newService:' + name)
-  return this
+  return this.registerService(name, function () { return instance }, config)
 }
 
-function instantiate(self, name, instance, config) {
+function handle(container, instance, config) {
+  if (!container.handlers.length) { return instance }
 
+  instance = container.handlers.reduce(function (instance, handler) {
+    return handler(instance, config)
+  }, instance)
+  return instance
 }
 
 Nali.prototype._instantiated = function (name, instance) {

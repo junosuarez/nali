@@ -319,7 +319,7 @@ describe('Nali', function () {
         .registerInstance('redis', function () {})
 
     container.resolve(function (db) {
-      console.log('graph:', JSON.stringify(container.graph(), null, 2))
+      //console.log('graph:', JSON.stringify(container.graph(), null, 2))
     })
     .then(function () {
       console.log('ok') 
@@ -349,6 +349,22 @@ describe('Nali', function () {
     })
   })
 
+  describe('behaviors', function () {
+    it('decorates instances', function () {
+      var container = Nali()
+      container.use(function (instance, config) {
+        instance.decorated = true
+        return instance
+      })
+
+      container.registerInstance('foo', {decorated: false})
+
+      container.inject(function (foo) {
+        foo.decorated.should.equal(true)
+      })
+    })
+  })
+
   describe('blocks', function () {
     it('is the organizing principle for services within a container', function (done) {
       var container = Nali('master')
@@ -358,7 +374,7 @@ describe('Nali', function () {
       var core = container.block('core', {dependsOn: ['data']})
         .registerService('domain', function domain(db, log) {})
 
-      console.log('CONTAINER', container)
+      // console.log('CONTAINER', container)
       container.name.should.equal('master')
       container.hasBlock('data').should.equal(true)
       container.getBlock('data').services.map(Cu.to('name')).should.deep.equal(['db'])
@@ -419,7 +435,7 @@ describe('Nali', function () {
               err.should.match(/Block Violation/)
               done()
             })
-          console.log('child', child)
+          //console.log('child', child)
           child.registerService('c', function c(a) {
             console.log('ZOMGERR')
           

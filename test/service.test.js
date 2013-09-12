@@ -11,8 +11,9 @@ const Cu = require('cu')
 
 describe('Service', function () {
   var Service = require('../service')
+
   it('has interface', function () {
-    var service = new Service('foo', [], function () {}, {}, {}, 'singleton')
+    var service = new Service('foo', [], function () {}, {}, {}, 'singleton', {c:2})
     service.should.have.interface({
       id: String,
       name: String,
@@ -20,9 +21,17 @@ describe('Service', function () {
       constructor: Function,
       container: Object,
       block: Object,
-      lifestyle: String
+      lifestyle: String,
+      config: Object
+    })
+
+    service.lifestyle.should.equal('singleton')
+    service.config.should.deep.equal({
+      c:2,
+      name: 'foo'
     })
   })
+
   it('toString', function () {
     var service = new Service('foo', [], null, {name: 'container'}, {name: 'block'})
     service.toString().should.equal('container.block/foo')

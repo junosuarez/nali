@@ -1,4 +1,5 @@
 const uuid = require('uuid')
+const Q = require('q')
 
 var log = function () {
   if (!module.exports.debug) { return }
@@ -15,6 +16,7 @@ const Service = module.exports = function Service(name, dependsOn, constructor, 
   this.container = container
   this.block = block
   this.config = config || {}
+  this.config.name = name
 
   lifestyle = (typeof lifestyle === 'string' ? Service.lifestyles[lifestyle] : lifestyle)
     || Service.lifestyles.singleton
@@ -38,15 +40,12 @@ Service.lifestyles = {
   singleton: {
     name: 'singleton',
     getInstance: function () {
-      var self = this
       log('getInstanceSingleton', this.name, !!this._instance, 'cons', !!this.constructor)
       if (this._instance) { return this._instance }
       log('consing')
+
       return this._instance = this.container.inject(this.constructor, this.config)
-        .then(function (instance) {
-          self.container._instantiated(self.name, instance)
-          return instance
-        })
+
     },
     dispose: function () {
 
