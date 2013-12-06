@@ -1,6 +1,6 @@
 const EventEmitter = require('events').EventEmitter
 const fninfo = require('fninfo')
-const Q = require('q')
+const Promise = require('bluebird')
 const util = require('util')
 const offer = require('offer')
 const Cu = require('cu')
@@ -98,7 +98,7 @@ Nali.prototype.resolve = function (name) {
   }
   log('resolve', name)
   const self = this
-  return Q.promise(function (resolve, reject) {
+  return new Promise(function (resolve, reject) {
 
     // special case dependencies
     switch (name) {
@@ -172,7 +172,7 @@ Nali.prototype.inject = function (fn, config) {
 
   debug(this.name + '/leaf: ' + params.join(', ') + ' ' + JSON.stringify(fn.ResponseRenderer || {}) )
   var self = this
-  return Q.all(params.map(this.resolve.bind(this)))
+  return Promise.all(params.map(this.resolve.bind(this)))
     .then(function (args) {
       //if (fn.ResponseRenderer) { console.log(JSON.stringify(fn.ResponseRenderer),params,args) }
       return fn.apply(fn, args)

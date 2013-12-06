@@ -1,7 +1,7 @@
 const chai = require('chai')
 chai.should()
-const Q = require('q')
-Q.longStackSupport = true
+const Promise = require('bluebird')
+Promise.longStackTraces()
 const sinon = require('sinon')
 chai.use(require('sinon-chai'))
 chai.use(require('chai-interface'))
@@ -154,7 +154,7 @@ describe('Nali', function () {
 
   it('won\'t instantiate a service if it is currently being instantiated', function (done) {
     var container = Nali()
-    var dfd = Q.defer()
+    var dfd = Promise.defer()
 
     var instantiations = 0
 
@@ -176,7 +176,7 @@ describe('Nali', function () {
       dfd.resolve()
 
       // finally
-      Q.all(services).then(function () {
+      Promise.all(services).then(function () {
         instantiations.should.equal(1)
       })
       .then(done, done)
