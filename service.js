@@ -1,5 +1,4 @@
 const uuid = require('uuid')
-const Q = require('q')
 
 var log = function () {
   if (!module.exports.debug) { return }

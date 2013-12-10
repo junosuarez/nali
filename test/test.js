@@ -24,12 +24,12 @@ describe('Nali', function () {
     it('throws if null or undefined', function () {
       var container = Nali()
       expect(function () {
-      container.registerInstance('foo', null)  
+      container.registerInstance('foo', null)
       }).to.throw(/required/)
       expect(function () {
-      container.registerInstance('foo', undefined)  
+      container.registerInstance('foo', undefined)
       }).to.throw(/required/)
-      
+
 
     })
 
@@ -158,7 +158,7 @@ describe('Nali', function () {
 
     var instantiations = 0
 
-    var service = function () { 
+    var service = function () {
       instantiations++
       return dfd.promise }
     container.registerService('service', service)
@@ -230,12 +230,12 @@ describe('Nali', function () {
       spy.dispose.should.have.been.called
     })
   })
-  
+
   describe('child containers', function () {
     it('can spawn child containers', function () {
       var container = Nali()
       container.registerInstance('restaurant', {})
-      var childContainer = container.spawnChild('kitchen')  
+      var childContainer = container.spawnChild('kitchen')
       childContainer.should.be.instanceof(Nali)
       childContainer.name.should.equal('kitchen')
     })
@@ -251,7 +251,7 @@ describe('Nali', function () {
       })
       .then(done, done)
 
-    })    
+    })
 
     it('example', function (done) {
       var parent = Nali('master')
@@ -322,13 +322,13 @@ describe('Nali', function () {
       //console.log('graph:', JSON.stringify(container.graph(), null, 2))
     })
     .then(function () {
-      console.log('ok') 
-    }, function (e) { 
+      console.log('ok')
+    }, function (e) {
       console.log('nok', e.stack)
       throw e
     })
     .then(done, done)
-    
+
   })
 
   describe('.registerService', function () {
@@ -423,7 +423,7 @@ describe('Nali', function () {
     })
 
     it('enforces blocks in nested containers', function (done) {
-      
+
       var container = Nali('master')
       container.block('A')
         .registerService('a', function a() {})
@@ -438,7 +438,7 @@ describe('Nali', function () {
           //console.log('child', child)
           child.registerService('c', function c(a) {
             console.log('ZOMGERR')
-          
+
           })
         })
 
