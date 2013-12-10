@@ -4,7 +4,7 @@
   "contributors": [
     "jden <jason@denizac.org>"
   ],
-  "version": "1.0.0-pre3",
+  "version": "1.0.0-pre4",
   "description": "a DI service registry",
   "keywords": [
     "dependency injection"
