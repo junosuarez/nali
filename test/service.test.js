@@ -1,7 +1,5 @@
 const chai = require('chai')
 chai.should()
-const Q = require('q')
-Q.longStackSupport = true
 const sinon = require('sinon')
 chai.use(require('sinon-chai'))
 chai.use(require('chai-interface'))

@@ -301,33 +301,36 @@ describe('Nali', function () {
     it('can still instantiate new instances of already registered services')
   })
 
-  describe('.graph', function (done) {
-    var container = Nali('master')
-      .registerInstance('log', function () {})
-      .registerInstance('stats', function () {})
-      .block('web', {dependsOn: ['core', 'render']})
-        .registerInstance('http', ' ')
-        .registerInstance('sockets', ' ')
-      .block('core', {dependsOn:['data']})
-        .registerInstance('userMgr', function () {})
-        .registerInstance('entityMgr', function () {})
-        .registerInstance('etcMgr', function () {})
-      .block('render', {dependsOn: ['core', 'data']})
-        .registerInstance('rendererLocator',' ')
-      .block('data')
-        .registerInstance('db', function () {})
-        .registerInstance('redis', function () {})
+  describe('.graph', function () {
+    it('graphs', function (done) {
+      var container = Nali('master')
+        .registerInstance('log', function () {})
+        .registerInstance('stats', function () {})
+        .block('web', {dependsOn: ['core', 'render']})
+          .registerInstance('http', ' ')
+          .registerInstance('sockets', ' ')
+        .block('core', {dependsOn:['data']})
+          .registerInstance('userMgr', function () {})
+          .registerInstance('entityMgr', function () {})
+          .registerInstance('etcMgr', function () {})
+        .block('render', {dependsOn: ['core', 'data']})
+          .registerInstance('rendererLocator',' ')
+        .block('data')
+          .registerInstance('db', function () {})
+          .registerInstance('redis', function () {})
 
-    container.resolve(function (db) {
-      //console.log('graph:', JSON.stringify(container.graph(), null, 2))
+      container.resolve(function (db) {
+        //console.log('graph:', JSON.stringify(container.graph(), null, 2))
+      })
+      .then(function () {
+        console.log('ok')
+      }, function (e) {
+        console.log('nok', e.stack)
+        throw e
+      })
+      .then(done, done)
+
     })
-    .then(function () {
-      console.log('ok')
-    }, function (e) {
-      console.log('nok', e.stack)
-      throw e
-    })
-    .then(done, done)
 
   })
 
@@ -350,7 +353,7 @@ describe('Nali', function () {
   })
 
   describe('behaviors', function () {
-    it('decorates instances', function () {
+    xit('decorates instances', function () {
       var container = Nali()
       container.use(function (instance, config) {
         instance.decorated = true
