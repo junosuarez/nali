@@ -166,13 +166,31 @@ Nali.prototype.resolve = function (name) {
 }
 // alias #fetch = #resolve
 Nali.prototype.fetch = Nali.prototype.resolve
-
 Nali.prototype.inject = function (fn, config) {
-  var params = fninfo(fn).params
+  var info = fninfo(fn)
+  var name = info.name
+  if (!name) {
+    try {
+      fn()
+    } catch (e) {
+      var frames = e.stack.split('\n')
+      for (var naliFrame = 0; naliFrame < frames.length; naliFrame++) {
+        if (frames[naliFrame].indexOf('Nali.inject') > -1) {
+          break;
+        }
+      }
+      
+      var file = (frames[naliFrame-1].match(/\((.+):\d+:\d+\)/) || [])[1] || frames[naliFrame] || frames.join()
+      name = file
+    }
+  }
 
-  debug(this.name + '/leaf: ' + params.join(', ') + ' ' + JSON.stringify(fn.ResponseRenderer || {}) )
+  setTimeout(checkDeps.bind(null, this, info.params, name || 'unknown'), 5000)
+
+
+  debug(this.name + '/leaf: ' + info.params.join(', ') + ' ' + JSON.stringify(fn.ResponseRenderer || {}) )
   var self = this
-  return Promise.all(params.map(this.resolve.bind(this)))
+  return Promise.all(info.params.map(this.resolve.bind(this)))
     .then(function (args) {
       //if (fn.ResponseRenderer) { console.log(JSON.stringify(fn.ResponseRenderer),params,args) }
       return fn.apply(fn, args)
@@ -261,6 +279,8 @@ Nali.prototype.registerService = function (name, constructor, config) {
     }
   })
 
+  setTimeout(checkDeps.bind(null, container, dependsOn, name), 5000)
+
   this.services.push(service)
   if (block) {
     block.services.push(service)
@@ -271,6 +291,26 @@ Nali.prototype.registerService = function (name, constructor, config) {
   this.emit('newService:' + name)
 
   return this
+}
+
+function checkDeps(container, deps, label) {
+  deps.forEach(function (dep) {
+      
+    var isRegistered = Boolean(container.services.filter(function (s) {
+      return s.name === dep
+    }).length)
+
+    if (!(isRegistered || dep === '_container')) {
+
+  if (!label) {
+    try {throw new Error} catch (e) {
+      console.log(e.stack)
+    }
+  }
+
+      console.error(container.name + ' [warn] ' + label + ' not available: unmet dependency: ' + dep)
+    }
+  })
 }
 
 Nali.prototype.registerInstance = function (name, instance, config) {
