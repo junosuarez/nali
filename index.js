@@ -169,21 +169,6 @@ Nali.prototype.fetch = Nali.prototype.resolve
 Nali.prototype.inject = function (fn, config) {
   var info = fninfo(fn)
   var name = info.name
-  if (!name) {
-    try {
-      fn()
-    } catch (e) {
-      var frames = e.stack.split('\n')
-      for (var naliFrame = 0; naliFrame < frames.length; naliFrame++) {
-        if (frames[naliFrame].indexOf('Nali.inject') > -1) {
-          break;
-        }
-      }
-      
-      var file = (frames[naliFrame-1].match(/\((.+):\d+:\d+\)/) || [])[1] || frames[naliFrame] || frames.join()
-      name = file
-    }
-  }
 
   setTimeout(checkDeps.bind(null, this, info.params, name || 'unknown'), 5000)
 
