@@ -13,6 +13,37 @@ describe('Nali', function () {
 
   const Nali = require('../')
 
+  describe('.register', function () {
+    it('can register one service', function () {
+      var container = Nali()
+      function blah() {}
+      container.register('blah', blah)
+      container.services.some(function (s) {
+        return s.name === 'blah' && s.constructor === blah
+      }).should.equal(true)
+    })
+    it('can register multiple services from a dictionary', function () {
+      function a() {}
+      function b() {}
+      var container = Nali()
+      container.register({
+        a: a,
+        b: b
+      })
+      container.services.some(function (s) {
+        return s.name === 'a' && s.constructor === a
+      }).should.equal(true)
+      container.services.some(function (s) {
+        return s.name === 'b' && s.constructor === b
+      }).should.equal(true)
+    })
+    it('returns self', function () {
+      var container = Nali()
+      container.register('a', function () {})
+        .should.equal(container)
+    })
+  })
+
   describe('.registerInstance', function () {
     it('can register instances', function () {
       var container = Nali()

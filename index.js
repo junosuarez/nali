@@ -238,6 +238,20 @@ function check(service) {
   return errs
 }
 
+Nali.prototype.register = function (name, constructor) {
+  const self = this
+  if (typeof name === 'object') {
+    const dict = name
+    Object.keys(dict).forEach(function (name) {
+      const constructor = dict[name]
+      self.registerService(name, constructor)
+    })
+  } else {
+    self.registerService(name, constructor)
+  }
+  return self
+}
+
 Nali.prototype.registerService = function (name, constructor, config) {
   var container = this
   if (container.frozen) {

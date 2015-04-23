@@ -7,24 +7,20 @@ note, this is a work in progress and the API should be considered unstable
 ```js
 const nali = require('nali')
 
-// register some static instances - config, etc
-
-nali.registerInstance('config', {conn_str: 'http://foo.bar'})
-
-// we can get those back synchronously using nali(name)
-
-const config = nali('config')
-// => {conn_str: 'http://foo.bar'}
-
 // we can register services
 // type Service: (...) => Instance
 // Services are functions with
 // optional dependency names as parameters
 // and which return an initialized instance of itself
 // the return value can be a Promise or a Value
-nali.registerService('db', {
-  function (config) {
+nali.register({
+  config: function () {
+    return P
+    conn_str: 'http://foo.bar'
+  },
+  db: function (config) {
     return Doodaboos.connect(config.conn_str)
+  
   })
 
 // we can resolve an instance of our `db` service:
@@ -57,8 +53,11 @@ Asynchronously resolve an instance of a service, lazily instantiating any depend
 
 ### `nali.registerInstance(name: String, instance: Object) => void`
 
-### `nali.registerService(name: String, service: Service) => void`
+*deprecated* use `nali.register('name', () => instance)` instead
 
+
+### `nali.registerService(name: String, service: Service) => void`
+*deprecated* use `nali.register('name', service)` instead
 
 ## Service Dependencies
 
@@ -103,4 +102,4 @@ From package root:
 
 ## license
 
-MIT. (c) MMXIII AgileMD. See LICENSE.md
+MIT. (c) MMXV AgileMD. See LICENSE.md
