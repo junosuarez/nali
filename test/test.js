@@ -1,3 +1,4 @@
+/* global describe, it */
 const chai = require('chai')
 chai.should()
 const Promise = require('bluebird')
@@ -8,7 +9,6 @@ chai.use(require('chai-interface'))
 const expect = chai.expect
 const Cu = require('cu')
 
-
 describe('Nali', function () {
 
   const Nali = require('../')
@@ -16,15 +16,15 @@ describe('Nali', function () {
   describe('.register', function () {
     it('can register one service', function () {
       var container = Nali()
-      function blah() {}
+      function blah () {}
       container.register('blah', blah)
       container.services.some(function (s) {
         return s.name === 'blah' && s.constructor === blah
       }).should.equal(true)
     })
     it('can register multiple services from a dictionary', function () {
-      function a() {}
-      function b() {}
+      function a () {}
+      function b () {}
       var container = Nali()
       container.register({
         a: a,
@@ -55,25 +55,22 @@ describe('Nali', function () {
     it('throws if null or undefined', function () {
       var container = Nali()
       expect(function () {
-      container.registerInstance('foo', null)
+        container.registerInstance('foo', null)
       }).to.throw(/required/)
       expect(function () {
-      container.registerInstance('foo', undefined)
+        container.registerInstance('foo', undefined)
       }).to.throw(/required/)
-
 
     })
 
-
   })
-
 
   it('can register services', function () {
     var container = Nali()
 
-    var apes = function (){}
-    var mammals = function (){}
-    var earth = function (){}
+    var apes = function () {}
+    var mammals = function () {}
+    var earth = function () {}
 
     container.registerService('apes', apes)
     container.registerService('mammals', mammals)
@@ -84,7 +81,7 @@ describe('Nali', function () {
     var container = Nali()
 
     var bar = {}
-    container.registerInstance('bar',bar)
+    container.registerInstance('bar', bar)
     container.resolve('bar')
     .then(function (instance) {
       instance.should.equal(bar)
@@ -107,7 +104,7 @@ describe('Nali', function () {
 
   })
 
-  it ('resolves dependencies', function (done) {
+  it('resolves dependencies', function (done) {
     var container = Nali()
 
     var inited = []
@@ -132,7 +129,7 @@ describe('Nali', function () {
     container.registerService('earth', earth)
 
     container.resolve('apes')
-    .then(function (val){
+    .then(function (val) {
       val.should.equal('apeInstance')
       inited.should.deep.equal([
         'earth',
@@ -143,7 +140,7 @@ describe('Nali', function () {
     .then(done, done)
   })
 
-  it ('resolves dependencies for services not yet registered', function (done) {
+  it('resolves dependencies for services not yet registered', function (done) {
     var container = Nali()
 
     var inited = []
@@ -167,7 +164,7 @@ describe('Nali', function () {
     container.registerService('mammals', mammals)
 
     container.resolve('apes')
-    .then(function (val){
+    .then(function (val) {
       val.should.equal('apeInstance')
       inited.should.deep.equal([
         'earth',
@@ -191,7 +188,8 @@ describe('Nali', function () {
 
     var service = function () {
       instantiations++
-      return dfd.promise }
+      return dfd.promise
+    }
     container.registerService('service', service)
 
     var services = []
@@ -289,7 +287,7 @@ describe('Nali', function () {
       parent.registerInstance('A', 'a')
       parent.registerService('block', function (_container) {
         var container = _container.spawnChild('block container')
-        container.registerInstance('B','b')
+        container.registerInstance('B', 'b')
         return container.resolve(function (A, B) {
           return {
             A: A,
@@ -340,18 +338,18 @@ describe('Nali', function () {
         .block('web', {dependsOn: ['core', 'render']})
           .registerInstance('http', ' ')
           .registerInstance('sockets', ' ')
-        .block('core', {dependsOn:['data']})
+        .block('core', {dependsOn: ['data']})
           .registerInstance('userMgr', function () {})
           .registerInstance('entityMgr', function () {})
           .registerInstance('etcMgr', function () {})
         .block('render', {dependsOn: ['core', 'data']})
-          .registerInstance('rendererLocator',' ')
+          .registerInstance('rendererLocator', ' ')
         .block('data')
           .registerInstance('db', function () {})
           .registerInstance('redis', function () {})
 
       container.resolve(function (db) {
-        //console.log('graph:', JSON.stringify(container.graph(), null, 2))
+        // console.log('graph:', JSON.stringify(container.graph(), null, 2))
       })
       .then(function () {
         console.log('ok')
@@ -384,29 +382,29 @@ describe('Nali', function () {
   })
 
   describe('behaviors', function () {
-    xit('decorates instances', function () {
-      var container = Nali()
-      container.use(function (instance, config) {
-        instance.decorated = true
-        return instance
-      })
+    // it('decorates instances', function () {
+    //   var container = Nali()
+    //   container.use(function (instance, config) {
+    //     instance.decorated = true
+    //     return instance
+    //   })
 
-      container.registerInstance('foo', {decorated: false})
+    //   container.registerInstance('foo', {decorated: false})
 
-      container.inject(function (foo) {
-        foo.decorated.should.equal(true)
-      })
-    })
+    //   container.inject(function (foo) {
+    //     foo.decorated.should.equal(true)
+    //   })
+    // })
   })
 
   describe('blocks', function () {
     it('is the organizing principle for services within a container', function (done) {
       var container = Nali('master')
-      container.registerService('log', function log() {})
+      container.registerService('log', function log () {})
       var data = container.block('data')
-        .registerService('db', function db(log) {})
-      var core = container.block('core', {dependsOn: ['data']})
-        .registerService('domain', function domain(db, log) {})
+        .registerService('db', function db (log) {})
+      container.block('core', {dependsOn: ['data']})
+        .registerService('domain', function domain (db, log) {})
 
       // console.log('CONTAINER', container)
       container.name.should.equal('master')
@@ -417,7 +415,7 @@ describe('Nali', function () {
       container.getBlock('core').services.map(Cu.to('name')).should.deep.equal(['domain'])
       container.getBlock('core').dependsOn.should.deep.equal(['data'])
 
-      data.registerService('bad', function bad(domain){})
+      data.registerService('bad', function bad (domain) {})
       container.on('error', function (err) {
         console.log('AAAA', err)
         err.message.should.match(/block violation/i)
@@ -432,7 +430,7 @@ describe('Nali', function () {
           .registerInstance('baz', 'baz')
 
       console.log(container.getBlock('foo'))
-      container.getBlock('foo').services.map(Cu.to('name')).should.deep.equal(['bar','baz'])
+      container.getBlock('foo').services.map(Cu.to('name')).should.deep.equal(['bar', 'baz'])
 
     })
 
@@ -441,36 +439,35 @@ describe('Nali', function () {
       var container = Nali('master')
 
       container.block('A')
-          .registerInstance('a','a')
+          .registerInstance('a', 'a')
         .block('B')
-          .registerService('b', function(a){})
+          .registerService('b', function (a) {})
 
+      container.on('error', function (e) {
+        console.log('doneee')
+        e.message.should.match(/block violation/i)
+        console.log('yaaaa')
+        done()
+      })
 
-        container.on('error', function (e) {
-          console.log('doneee')
-          e.message.should.match(/block violation/i)
-          console.log('yaaaa')
-          done()
-        })
-
-        //console.log('lissners', container.listeners('error'))
+        // console.log('lissners', container.listeners('error'))
     })
 
     it('enforces blocks in nested containers', function (done) {
 
       var container = Nali('master')
       container.block('A')
-        .registerService('a', function a() {})
-      var x = container.block('B')
-        .registerService('b', function b(_container) {
+        .registerService('a', function a () {})
+      container.block('B')
+        .registerService('b', function b (_container) {
           var child = _container.spawnChild('child')
           child.on('error', function (err) {
               console.log('foooo')
               err.should.match(/Block Violation/)
               done()
             })
-          //console.log('child', child)
-          child.registerService('c', function c(a) {
+          // console.log('child', child)
+          child.registerService('c', function c (a) {
             console.log('ZOMGERR')
 
           })

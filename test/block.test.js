@@ -1,11 +1,6 @@
+/* global describe, it */
 const chai = require('chai')
 chai.should()
-const sinon = require('sinon')
-chai.use(require('sinon-chai'))
-chai.use(require('chai-interface'))
-const expect = chai.expect
-const Cu = require('cu')
-
 
 describe('Block', function () {
   var Block = require('../block')

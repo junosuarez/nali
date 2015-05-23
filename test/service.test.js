@@ -1,17 +1,13 @@
+/* global describe, it */
 const chai = require('chai')
 chai.should()
-const sinon = require('sinon')
-chai.use(require('sinon-chai'))
 chai.use(require('chai-interface'))
-const expect = chai.expect
-const Cu = require('cu')
-
 
 describe('Service', function () {
   var Service = require('../service')
 
   it('has interface', function () {
-    var service = new Service('foo', [], function () {}, {}, {}, 'singleton', {c:2})
+    var service = new Service('foo', [], function () {}, {}, {}, 'singleton', {c: 2})
     service.should.have.interface({
       id: String,
       name: String,
@@ -25,7 +21,7 @@ describe('Service', function () {
 
     service.lifestyle.should.equal('singleton')
     service.config.should.deep.equal({
-      c:2,
+      c: 2,
       name: 'foo'
     })
   })

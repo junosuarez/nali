@@ -4,10 +4,8 @@ var log = function () {
   if (!module.exports.debug) { return }
   console.log.apply(console, arguments)
 }
-var debug = log
 
-
-const Service = module.exports = function Service(name, dependsOn, constructor, container, block, lifestyle, config) {
+const Service = module.exports = function Service (name, dependsOn, constructor, container, block, lifestyle, config) {
   this.id = uuid.v4()
   this.name = name
   this.dependsOn = dependsOn
@@ -43,7 +41,8 @@ Service.lifestyles = {
       if (this._instance) { return this._instance }
       log('consing')
 
-      return this._instance = this.container.inject(this.constructor, this.config)
+      this._instance = this.container.inject(this.constructor, this.config)
+      return this._instance
 
     },
     dispose: function () {
