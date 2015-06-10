@@ -1,7 +1,10 @@
 # nali
-a DI service registry
+a service registry for dependency injection and application composition
 
-note, this is a work in progress and the API should be considered unstable
+
+[![js-standard-style](https://cdn.rawgit.com/feross/standard/master/badge.svg)](https://github.com/feross/standard)
+[![Dependency Status](https://david-dm.org/jden/nali.svg)](https://david-dm.org/jden/nali) 
+[![Circle CI](https://circleci.com/gh/jden/nali.svg?style=svg)](https://circleci.com/gh/jden/nali)
 
 ## usage
 ```js
@@ -99,7 +102,6 @@ From package root:
 
 - jden <jason@denizac.org>
 
-[![js-standard-style](https://cdn.rawgit.com/feross/standard/master/badge.svg)](https://github.com/feross/standard)
 
 ## license
 

@@ -7,11 +7,11 @@
   "version": "1.1.1",
   "description": "a DI service registry",
   "keywords": [
-    "dependency injection"
+    "dependency injection", "container"
   ],
   "main": "index.js",
   "scripts": {
-    "test": "standard && mocha"
+    "test": "quality && mocha"
   },
   "repository": "git@github.com:jden/nali.git",
   "license": "MIT",
@@ -20,9 +20,9 @@
     "chai": "~1.6.0",
     "chai-interface": "~1.1.0",
     "mocha": "~1.9.0",
+    "quality": "^1.0.0",
     "sinon": "~1.7.3",
-    "sinon-chai": "~2.4.0",
-    "standard": "^3.11.0"
+    "sinon-chai": "~2.4.0"
   },
   "dependencies": {
     "bluebird": "^2.9.9",
@@ -30,15 +30,5 @@
     "fninfo": "~2.1.0",
     "offer": "~1.0.1",
     "uuid": "~1.4.1"
-  },
-  "jshintConfig": {
-    "curly": true,
-    "quotmark": "single",
-    "unused": true,
-    "undef": true,
-    "asi": true,
-    "node": true,
-    "strict": false,
-    "esnext": true
   }
 }
