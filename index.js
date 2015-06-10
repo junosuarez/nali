@@ -190,9 +190,9 @@ function checkDependency (name, context) {
     return checkDependency(name, container.parentContainer)
   }
 
-  return block === dep.block
-      || !dep.block
-      || (block && Cu.contains(block.dependsOn, dep.block.name))
+  return block === dep.block ||
+    !dep.block ||
+    (block && Cu.contains(block.dependsOn, dep.block.name))
 }
 
 function resolveDependency (name, context) {

@@ -21,7 +21,7 @@
     "chai": "~1.6.0",
     "chai-interface": "~1.1.0",
     "mocha": "~1.9.0",
-    "quality": "^1.0.0",
+    "quality": "^1.0.4",
     "sinon": "~1.7.3",
     "sinon-chai": "~2.4.0"
   },

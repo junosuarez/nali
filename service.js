@@ -15,8 +15,8 @@ const Service = module.exports = function Service (name, dependsOn, constructor,
   this.config = config || {}
   this.config.name = name
 
-  lifestyle = (typeof lifestyle === 'string' ? Service.lifestyles[lifestyle] : lifestyle)
-    || Service.lifestyles.singleton
+  lifestyle = (typeof lifestyle === 'string' ? Service.lifestyles[lifestyle] : lifestyle) ||
+    Service.lifestyles.singleton
 
   this.lifestyle = typeof lifestlye === 'string' ? lifestyle : (lifestyle && lifestyle.name) || 'other'
 
